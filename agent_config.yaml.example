@@ -1,0 +1,31 @@
+# Legal Demo - Agent Credentials
+#
+# Create each agent as "External" on platform.thenvoi.com,
+# then paste the agent_id and api_key below.
+# Copy this file to agent_config.yaml before running.
+
+# --- TechVentures (Buyer) ---
+
+tv_contract_attorney:
+  agent_id: ""
+  api_key: ""
+
+tv_ip_analyst:
+  agent_id: ""
+  api_key: ""
+
+# --- BioGen (Seller) ---
+
+bg_licensing_counsel:
+  agent_id: ""
+  api_key: ""
+
+bg_regulatory_advisor:
+  agent_id: ""
+  api_key: ""
+
+# --- Neutral ---
+
+mediator:
+  agent_id: ""
+  api_key: ""

@@ -1,0 +1,15 @@
+startup_ceo:
+  framework: pydantic_ai
+  model: gpt-5.4
+
+startup_lawyer:
+  framework: langgraph
+  model: gpt-5.4
+
+vc_partner:
+  framework: langgraph
+  model: gpt-5.4
+
+vc_counsel:
+  framework: langgraph
+  model: gpt-5.4

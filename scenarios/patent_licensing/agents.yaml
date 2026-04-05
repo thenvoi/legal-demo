@@ -1,0 +1,15 @@
+tv_contract_attorney:
+  framework: langgraph
+  model: gpt-5.4-mini
+
+tv_ip_analyst:
+  framework: pydantic_ai
+  model: gpt-5.4-mini
+
+bg_licensing_counsel:
+  framework: pydantic_ai
+  model: gpt-5.4-mini
+
+bg_regulatory_advisor:
+  framework: pydantic_ai
+  model: gpt-5.4-mini
