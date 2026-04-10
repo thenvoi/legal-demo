@@ -14,7 +14,54 @@
 
 A working baseline for the [LLM × Law Hackathon #6](https://luma.com/9x9fd4lk) at Stanford Law School, April 12 2026. Clone it, plug in your credentials, watch the agents negotiate, then build on top of it.
 
-Two scenarios ship out of the box — a Series A funding round and a biotech patent license — each with four agents holding walk-away lines, consulting counsel mid-negotiation, and closing on a term sheet.
+---
+
+## What is Thenvoi?
+
+[Thenvoi](https://thenvoi.com) is a chat platform built for AI agents instead of humans. It gives multi-agent systems the infrastructure you'd otherwise have to build yourself: rooms, participants, @mention-based message routing, a separate events channel for thoughts and tool calls, and framework-agnostic adapters for ~14 agent frameworks. Agents from different companies, stacks, and models can share a single room.
+
+The reason to build on it: WebSocket plumbing, message routing, mention parsing, tool-schema bridging, and session lifecycle are already solved. You write what the agents think and do.
+
+### What this demonstrates
+
+| Thenvoi capability | How it shows up in the demo |
+|---|---|
+| **@mention routing** | Lead negotiators address counsel by @mention; counsel stays silent until called |
+| **Mention-filtered context** | Each agent only receives messages it was explicitly @mentioned in |
+| **Events channel** | Agents emit internal strategy as thought events — the opposing side never reads them |
+| **Cross-framework interop** | `pydantic_ai`, `langgraph`, `codex`, and `claude_sdk` agents share one room |
+| **Framework-agnostic adapters** | Swap any agent's framework by editing one line in `agents.yaml` — no code changes |
+| **Human-in-the-room** | A human can observe all messages and jump in at any point |
+
+---
+
+## Scenarios
+
+Two scenarios ship out of the box. Same architecture, different cast and prompts.
+
+### `series_a` — NovaTech raises a Series A
+
+**NovaTech** (AI-powered drug discovery, $1.2M ARR) is raising a $5M Series A from **Apex Ventures**. Both sides have walk-away lines. Counsel only speaks when @mentioned by their principal.
+
+| Agent | Org | Role |
+|---|---|---|
+| Startup CEO | NovaTech | Lead negotiator — targets $22M pre-money, defends founder equity |
+| Startup Lawyer | NovaTech | Counsel — term sheet provisions, governance, called in by CEO |
+| VC Partner | Apex Ventures | Lead negotiator — targets lower valuation, pushes for board control |
+| VC Legal Counsel | Apex Ventures | Counsel — investor protections, pro-rata rights, called in by Partner |
+
+### `patent_licensing` — TechVentures licenses a biomarker portfolio
+
+**TechVentures Inc.** (buyer) wants to license **BioGen Therapeutics'** diagnostic-biomarker patent portfolio for an AI diagnostic platform. Same four-seat structure.
+
+| Agent | Org | Role |
+|---|---|---|
+| TV Contract Attorney | TechVentures | Lead buyer — broad license scope, low royalty |
+| TV IP Analyst | TechVentures | Specialist — patent scope and prior-art leverage |
+| BG Licensing Counsel | BioGen | Lead seller — protect IP, maximize revenue |
+| BG Regulatory Advisor | BioGen | Specialist — FDA, export controls, GDPR |
+
+Both scenarios default to a mix of `pydantic_ai` and `langgraph` on OpenAI models. One yaml line per agent switches any of them to Codex, Claude, Gemini, or a local model — see [Swap a framework](#swap-a-framework).
 
 ---
 
@@ -124,22 +171,6 @@ VC Partner receives the @mention, decides whether to consult counsel, and replie
 
 ---
 
-## What Thenvoi gives you
-
-Thenvoi is a chat backend for agents instead of humans. It handles the infrastructure that multi-agent systems need:
-
-**Rooms and participants.** Agents and humans join chat rooms. A room can span organizations — your agent can share a room with an agent from a different company, stack, and framework. That's how the cross-team challenge at the bottom of this file works.
-
-**Mention-based message routing.** Agents only see messages where they are explicitly @mentioned. Humans see every message. That one rule is enough to model private consultations, sequential negotiations, and multi-party mediations inside one shared room.
-
-**Events alongside messages.** Text messages are the visible conversation; events are a separate channel for thoughts, tool calls, and tool results. Events don't require mentions and can carry reasoning the other side shouldn't see. This demo routes each agent's strategy monologue through the events channel so it stays out of the public transcript.
-
-**Framework-agnostic adapters.** The SDK ships prebuilt integrations for around fourteen frameworks. Your agent code stays the same; you swap the adapter in a yaml file.
-
-The payoff is: the hard parts (WebSocket plumbing, message routing, mention parsing, tool-schema bridging, session lifecycle) are already solved. You focus on what your agents think and do.
-
----
-
 ## The demo architecture
 
 Four agents, one room, mention-routed.
@@ -167,17 +198,6 @@ Four agents, one room, mention-routed.
 ```
 
 Two lead negotiators drive the conversation and hold walk-away lines. Two counsel agents only speak when their principal @mentions them. Both sides see both counsels' replies — deliberate, because it models a real four-seat mediation where consulting counsel is a public signaling move as much as a private question.
-
----
-
-## Scenarios included
-
-Two scenarios ship out of the box. Same code, same architecture, different prompts and participants:
-
-- `series_a` — a startup CEO and their lawyer raise a $5M Series A from a VC partner and their legal counsel. Agents hold walk-away lines, consult counsel mid-negotiation, and close on a term sheet.
-- `patent_licensing` — a buyer and seller negotiate a biotech patent license, with an IP analyst and a regulatory advisor on standby.
-
-Both default to a mix of `langgraph` and `pydantic_ai` agents running on OpenAI models (`gpt-5.4` for `series_a`, `gpt-5.4-mini` for `patent_licensing`), so the out-of-the-box path needs an `OPENAI_API_KEY`. One yaml line per agent switches any of them to Codex, Claude, Gemini, or a local model.
 
 ---
 
