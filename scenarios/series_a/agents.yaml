@@ -1,15 +1,19 @@
 startup_ceo:
-  framework: pydantic_ai
-  model: gpt-5.4
+  framework: codex
+  model: gpt-5.4-mini
+  reasoning_effort: high
 
 startup_lawyer:
-  framework: langgraph
-  model: gpt-5.4
+  framework: codex
+  model: gpt-5.4-mini
+  reasoning_effort: high
 
 vc_partner:
-  framework: langgraph
-  model: gpt-5.4
+  framework: codex
+  model: gpt-5.4-mini
+  reasoning_effort: high
 
-vc_counsel:
-  framework: langgraph
-  model: gpt-5.4
+vc_legal_counsel:
+  framework: codex
+  model: gpt-5.4-mini
+  reasoning_effort: high

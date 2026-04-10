@@ -1,5 +1,6 @@
-agent_config.yaml
-.agent_ids.txt
+agent_config*.yaml
+.agent_ids.*
 .env
+.venv/
 __pycache__/
 *.pyc

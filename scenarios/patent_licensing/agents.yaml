@@ -1,15 +1,19 @@
 tv_contract_attorney:
-  framework: langgraph
+  framework: codex
   model: gpt-5.4-mini
+  reasoning_effort: high
 
 tv_ip_analyst:
-  framework: pydantic_ai
+  framework: codex
   model: gpt-5.4-mini
+  reasoning_effort: high
 
 bg_licensing_counsel:
-  framework: pydantic_ai
+  framework: codex
   model: gpt-5.4-mini
+  reasoning_effort: high
 
 bg_regulatory_advisor:
-  framework: pydantic_ai
+  framework: codex
   model: gpt-5.4-mini
+  reasoning_effort: high
