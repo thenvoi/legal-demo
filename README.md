@@ -11,7 +11,7 @@ Two scenarios ship out of the box. Same code, same architecture, different promp
 - `series_a` — a startup CEO and their lawyer raise a $5M Series A from a VC partner and their legal counsel. Agents hold walk-away lines, consult counsel mid-negotiation, and close on a term sheet.
 - `patent_licensing` — a buyer and seller negotiate a biotech patent license, with an IP analyst and a regulatory advisor on standby.
 
-Both default to running every agent on the `codex` adapter with `gpt-5.4-mini` and `reasoning_effort: high`. One yaml line per agent switches any of them to Claude, Gemini, PydanticAI, LangGraph, or any of the other frameworks Thenvoi supports.
+Both default to a mix of `langgraph` and `pydantic_ai` agents running on OpenAI models — `gpt-5.4` for `series_a`, `gpt-5.4-mini` for `patent_licensing` — so the out-of-the-box path needs an `OPENAI_API_KEY`. One yaml line per agent switches any of them to Codex, Claude, Gemini, or whatever else Thenvoi supports, and the top of each `agents.yaml` lists the copy-pasteable alternatives. See [Swap a framework](#swap-a-framework) for the walk-through, including how to run the demo on a Codex or Claude subscription or on a local model, no API keys required.
 
 ## What is Thenvoi?
 
@@ -45,8 +45,10 @@ Four agents, one room, mention-routed.
 +----------+                                  +----------+
 
          (every text message is visible to all 4;
-          thought events stay in the events stream
-          and the opposing side never reads them)
+          agents can also emit thought events via
+          thenvoi_send_event, which stay out of the
+          text stream and the opposing side never
+          reads them — see "events" below)
 ```
 
 Two lead negotiators (Startup CEO and VC Partner) drive the conversation and hold walk-away lines. Two counsel agents only speak when their principal @mentions them. Both sides see both counsels' replies. That's deliberate: it models a real four-seat mediation where consulting counsel is a public signaling move as much as a private question, and it's a useful forcing function for prompt design because it makes counsel think about what they're willing to say out loud.
@@ -57,7 +59,15 @@ Two lead negotiators (Startup CEO and VC Partner) drive the conversation and hol
 
 - Python 3.11 or newer.
 - A Thenvoi account at [app.thenvoi.com](https://app.thenvoi.com). Hackathon organizers can provision one if you don't already have access.
-- The Codex CLI for the default setup: `brew install codex && codex login`. Codex handles its own OpenAI auth, so you do not need an OpenAI key in your environment.
+- An **OPENAI_API_KEY** in your `.env` for the default setup. The shipped scenarios use a mix of `langgraph` and `pydantic_ai` adapters running on OpenAI models (`gpt-5.4` for `series_a`, `gpt-5.4-mini` for `patent_licensing`).
+
+Don't have an OpenAI API key? You don't need one. Every agent is framework-agnostic, and you can swap any of them to something you already have by editing one line per agent in `scenarios/<name>/agents.yaml`. Three options the demo supports out of the box:
+
+- **Your Codex CLI subscription.** `brew install codex && codex login` once, then set `framework: codex` on any agent. Codex handles its own OpenAI auth through the subscription, so no API key needs to touch your `.env`.
+- **Your Claude subscription via the Claude Agent SDK.** Set `framework: claude_sdk` on any agent and authenticate with the Claude CLI. Uses your Claude Max / Claude Pro session.
+- **A local model.** Point `langgraph` at any OpenAI-compatible endpoint (Ollama, vLLM, LM Studio). Set `OPENAI_BASE_URL=http://localhost:11434/v1` (or wherever your server lives) in your `.env`, set `OPENAI_API_KEY` to a dummy placeholder, and the existing `langgraph` agents will drive your local model with zero code changes.
+
+The full walk-through of these swaps lives in [Swap a framework](#swap-a-framework) below, and each scenario's `agents.yaml` has the alternatives listed at the top of the file as copy-pasteable examples.
 
 ### 1. Install
 
@@ -97,7 +107,7 @@ cp agent_config.series_a.yaml.example agent_config.series_a.yaml
 python run_all.py --scenario series_a
 ```
 
-Each agent runs in its own Python process and spawns its own codex subprocess. You'll see log lines showing them connect to the platform and subscribe to their room stream. Leave this terminal open. Ctrl-C shuts everything down cleanly.
+Each agent runs in its own Python process and connects to the Thenvoi platform over WebSocket. You'll see log lines showing them subscribe to their room stream. Leave this terminal open. Ctrl-C shuts everything down cleanly.
 
 ### 4. Start a negotiation
 
@@ -119,21 +129,39 @@ If you want reproducible kickoff messages instead of typing your own, look at `s
 
 ## Swap a framework
 
-Every agent is framework-agnostic. Want one of them running on Claude instead of codex? Edit one line in `scenarios/series_a/agents.yaml`:
+Every agent is framework-agnostic: the choice lives in `scenarios/<scenario>/agents.yaml`, not in the agent code. That's the main reason to run this demo on Thenvoi — your four agents can use four different frameworks, your team can bring whatever auth you already have, and the room stays the same.
+
+Out of the box, `series_a` runs one agent on `pydantic_ai` and three on `langgraph` (all OpenAI `gpt-5.4`), and `patent_licensing` runs one on `langgraph` and three on `pydantic_ai` (all OpenAI `gpt-5.4-mini`). Both mixes need `OPENAI_API_KEY` in your `.env`.
+
+If you don't have an OpenAI API key, or you want to stop burning credits, swap any agent by editing its entry in the scenario's `agents.yaml`. The file already has the most useful alternatives commented at the top, so it's a copy-paste.
+
+**Use your Codex CLI subscription** (no API key needed, `codex login` handles auth):
 
 ```yaml
 vc_partner:
-  framework: claude_sdk                    # was: codex
+  framework: codex
+  model: gpt-5.4-mini
+  reasoning_effort: high
+```
+
+**Use your Claude subscription** via the Claude Agent SDK:
+
+```yaml
+vc_partner:
+  framework: claude_sdk
   model: claude-sonnet-4-5-20250929
   max_thinking_tokens: 16000
 ```
 
-Install the extra and restart the agents:
+**Point langgraph at a local model** through any OpenAI-compatible endpoint (Ollama, vLLM, LM Studio):
 
-```bash
-pip install 'thenvoi-sdk[claude_sdk]'
-python run_all.py --scenario series_a
+```yaml
+vc_partner:
+  framework: langgraph
+  model: llama3.1:8b
 ```
+
+Then set `OPENAI_BASE_URL=http://localhost:11434/v1` and `OPENAI_API_KEY=ollama` (or any placeholder) in your `.env`, install the extra for the framework you chose if needed (`pip install 'thenvoi-sdk[claude_sdk]'`, etc.), and restart the agents.
 
 The adapter factory forwards every yaml key beyond `framework` and `model` straight into the underlying adapter constructor. Any adapter-specific knob (`reasoning_effort`, `max_thinking_tokens`, `temperature`, `approval_mode`, whatever) lives in yaml, no Python changes required.
 
@@ -187,10 +215,11 @@ FDA_TOOLS = [(LookupFdaGuidanceInput, lookup_fda_guidance)]
 
 The LLM sees a tool called `lookupfdaguidance` with two parameters, described by the docstring. When it calls the tool, Pydantic validates the arguments, your callable runs, and the return value goes back into the conversation. If validation fails, the LLM gets a formatted error message it can react to.
 
-Wire the tools into an agent by passing the list to `create_adapter` from its agent module:
+Wire the tools into an agent by passing the list to `create_adapter` from its agent module. The example below assumes the target agent has been switched to a framework that accepts the portable tuple format (`codex`, `claude_sdk`, `anthropic`, `gemini`, or `google_adk`) — the two outliers are covered in the note further down:
 
 ```python
 # scenarios/patent_licensing/bg_regulatory_advisor.py
+# (assumes framework: claude_sdk in scenarios/patent_licensing/agents.yaml)
 from scenarios.patent_licensing.tools import FDA_TOOLS
 
 async def main() -> None:
@@ -314,10 +343,18 @@ Replace the patent licensing scenario's `bg_regulatory_advisor` prompt-driven pe
 Steps:
 
 1. Build a vector store over an FDA guidance corpus. Chroma, Qdrant, and pgvector all work. A few hundred guidance documents is plenty for a demo.
-2. Write `lookup_fda_guidance(inp)` as a `CustomToolDef` tuple using the pattern in "Adding your own tools" above. Put it in `scenarios/patent_licensing/tools.py` so it's easy to reuse across agents.
-3. Import the tool list in `scenarios/patent_licensing/bg_regulatory_advisor.py` and pass it to `create_adapter(..., additional_tools=FDA_TOOLS)`. That's the only change the agent module needs.
-4. In the advisor's prompt, require it to call `lookupfdaguidance` before making any claim about FDA rules, and to quote the returned text verbatim in its response.
-5. Optional: add a second `CheckCitationInput` / `check_citation` tool that fetches the source and verifies the claim actually appears in it before the agent sends its reply. Chain the two by making the prompt require a successful `check_citation` call for every factual assertion.
+2. Switch `bg_regulatory_advisor` to a framework with strong native tool support by editing `scenarios/patent_licensing/agents.yaml`. The commented alternatives at the top of the file give you the exact yaml — `claude_sdk` is a good default for a tool-heavy specialist:
+   ```yaml
+   bg_regulatory_advisor:
+     framework: claude_sdk
+     model: claude-sonnet-4-5-20250929
+     max_thinking_tokens: 16000
+   ```
+   Then `pip install 'thenvoi-sdk[claude_sdk]'` if you haven't already.
+3. Write `lookup_fda_guidance(inp)` as a `CustomToolDef` tuple using the pattern in "Adding your own tools" above. Put it in `scenarios/patent_licensing/tools.py` so it's easy to reuse across agents.
+4. Import the tool list in `scenarios/patent_licensing/bg_regulatory_advisor.py` and pass it to `create_adapter(..., additional_tools=FDA_TOOLS)`. That's the only change the agent module needs.
+5. In the advisor's prompt, require it to call `lookupfdaguidance` before making any claim about FDA rules, and to quote the returned text verbatim in its response.
+6. Optional: add a second `CheckCitationInput` / `check_citation` tool that fetches the source and verifies the claim actually appears in it before the agent sends its reply. Chain the two by making the prompt require a successful `check_citation` call for every factual assertion.
 
 You now have a specialist that can't hallucinate regulatory requirements because the prompt forces it to ground every claim in a retrieved source. On theme for the trust-and-safety track, and it pairs naturally with the sponsor corpora some of you will have access to.
 

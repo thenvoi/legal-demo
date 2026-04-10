@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A multi-agent negotiation demo where 4 AI agents negotiate through the Thenvoi platform. Supports multiple negotiation scenarios, each with its own agents, domain-specific prompts, and isolated credentials. All four agents in a scenario share a single room.
 
-Every agent is framework-agnostic: the choice of adapter (`codex`, `claude_sdk`, `anthropic`, `pydantic_ai`, `langgraph`, `gemini`, `google_adk`) is driven by a per-scenario `agents.yaml`, not hardcoded in the agent module. Swap any agent to a different framework by editing yaml alone. Current default: every agent runs on the `codex` adapter with `gpt-5.4-mini` and `reasoning_effort: high`.
+Every agent is framework-agnostic: the choice of adapter (`codex`, `claude_sdk`, `anthropic`, `pydantic_ai`, `langgraph`, `gemini`, `google_adk`) is driven by a per-scenario `agents.yaml`, not hardcoded in the agent module. Swap any agent to a different framework by editing yaml alone. Current defaults: `series_a` ships 1 `pydantic_ai` + 3 `langgraph` on `gpt-5.4`; `patent_licensing` ships 1 `langgraph` + 3 `pydantic_ai` on `gpt-5.4-mini`. Both default mixes require `OPENAI_API_KEY`. Each `agents.yaml` has commented alternative blocks at the top (codex subscription, claude_sdk subscription, langgraph + local model) so switching away from OpenAI is a copy-paste, not a refactor.
 
 **Available scenarios:**
 - `series_a` (default) — NovaTech (startup) + Apex Ventures (VC) negotiate Series A funding terms

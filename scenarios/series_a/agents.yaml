@@ -1,19 +1,45 @@
+# Framework and model configuration for the Series A scenario agents.
+#
+# The defaults below mix pydantic_ai and langgraph on OpenAI models
+# (gpt-5.4), which means you need OPENAI_API_KEY set in your .env.
+#
+# Don't have an OpenAI key? No problem. You can run every agent on
+# something you already have. Swap any agent's `framework:` and `model:`
+# to one of these options and the rest of the demo keeps working:
+#
+#   # Codex CLI subscription (run `codex login` once, then no API key needed)
+#   framework: codex
+#   model: gpt-5.4-mini
+#   reasoning_effort: high
+#
+#   # Claude subscription via the Claude Agent SDK
+#   framework: claude_sdk
+#   model: claude-sonnet-4-5-20250929
+#   max_thinking_tokens: 16000
+#
+#   # A local model through any OpenAI-compatible endpoint (Ollama, vLLM,
+#   # LM Studio, etc.). Set OPENAI_BASE_URL in your .env to the server URL,
+#   # e.g. http://localhost:11434/v1, and use whatever model name your
+#   # server exposes.
+#   framework: langgraph
+#   model: llama3.1:8b
+#
+# Any key beyond `framework:` and `model:` is forwarded straight into the
+# adapter constructor, so adapter-specific options (reasoning_effort,
+# max_thinking_tokens, temperature, ...) live here in yaml.
+
 startup_ceo:
-  framework: codex
-  model: gpt-5.4-mini
-  reasoning_effort: high
+  framework: pydantic_ai
+  model: gpt-5.4
 
 startup_lawyer:
-  framework: codex
-  model: gpt-5.4-mini
-  reasoning_effort: high
+  framework: langgraph
+  model: gpt-5.4
 
 vc_partner:
-  framework: codex
-  model: gpt-5.4-mini
-  reasoning_effort: high
+  framework: langgraph
+  model: gpt-5.4
 
 vc_legal_counsel:
-  framework: codex
-  model: gpt-5.4-mini
-  reasoning_effort: high
+  framework: langgraph
+  model: gpt-5.4
