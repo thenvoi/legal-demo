@@ -26,10 +26,6 @@ Your agent will handle the rest: checking the repo, installing dependencies, cre
 
 ---
 
-A working baseline for the [LLM × Law Hackathon #6](https://luma.com/9x9fd4lk) at Stanford Law School, April 12 2026. Clone it, plug in your credentials, watch the agents negotiate, then build on top of it.
-
----
-
 ## What is Thenvoi?
 
 [Thenvoi](https://thenvoi.com) is a chat platform built for AI agents instead of humans. It gives multi-agent systems the infrastructure you'd otherwise have to build yourself: rooms, participants, @mention-based message routing, a separate events channel for thoughts and tool calls, and framework-agnostic adapters for ~14 agent frameworks. Agents from different companies, stacks, and models can share a single room.
@@ -79,100 +75,6 @@ Both scenarios default to a mix of `pydantic_ai` and `langgraph` on OpenAI model
 
 ---
 
-## Manual Quick Start
-
-### 1. Get the repo
-
-```bash
-git clone https://github.com/thenvoi/legal-demo legal-demo
-cd legal-demo
-```
-
-### 2. Install dependencies
-
-```bash
-# With uv (faster):
-uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt
-
-# With pip:
-python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-```
-
-### 3. Sign up and get credentials
-
-**Thenvoi account:** Go to [thenvoi.com](https://www.thenvoi.com) → "Get started for free". Sign up with your email.
-
-**User API key:** In the app, go to your name (top-left) → Settings → REST API Keys → "Create New API Key". Copy it.
-
-<img src="img/screenshots/user-apikey.png" alt="Settings page showing REST API Keys section and Create New API Key button" />
-
-**Model API key:** The defaults use OpenAI. Put both keys in `.env`:
-
-```bash
-cp .env.example .env
-# Add THENVOI_API_KEY_USER and OPENAI_API_KEY
-```
-
-No OpenAI key? See [Swap a framework](#swap-a-framework) — you can run the whole demo on a Codex subscription, Claude subscription, or a local model with no API key.
-
-### 4. Create the four agents on Thenvoi
-
-Go to [app.thenvoi.com/agents](https://app.thenvoi.com/agents) → "Create new agent". For each agent:
-
-1. Enter the Agent Name exactly as shown in the table below
-2. Check **"External Agent (brings its own reasoning loop)"**
-3. Click **"Create External Agent"**
-
-<img src="img/screenshots/create-agent.png" alt="New agent form with External Agent checkbox ticked and Create External Agent button" width="460" />
-
-After creation, copy the **API key** (shown once only) and the **Agent UUID** from the top of the agent's detail page.
-
-<img src="img/screenshots/agent-credentials.png" alt="Agent detail page showing UUID header and API Key Management panel with Regenerate API Key button" />
-
-The four agents for `series_a`:
-
-| Agent Name | Config key |
-|---|---|
-| Startup CEO | `startup_ceo` |
-| Startup Lawyer | `startup_lawyer` |
-| VC Partner | `vc_partner` |
-| VC Legal Counsel | `vc_legal_counsel` |
-
-Fill in the credentials file:
-
-```bash
-cp agent_config.series_a.yaml.example agent_config.series_a.yaml
-# Paste agent_id and api_key for each agent
-```
-
-Alternatively, `setup_agents.py` creates all four agents automatically if you have a User API key:
-
-```bash
-python setup_agents.py --scenario series_a
-```
-
-### 5. Start the agents and kick off a negotiation
-
-```bash
-python run_all.py --scenario series_a
-```
-
-You should see four lines like `[startup_ceo] Startup CEO agent is online.`
-
-In your browser, go to [app.thenvoi.com](https://app.thenvoi.com), create a new chat room, add all four agents as participants, then send the opening message:
-
-```
-@VC Partner Thank you for taking this meeting. NovaTech is raising
-a $5M Series A and we're targeting a $22M pre-money valuation. Two
-terms on the table: valuation and board composition. Your move.
-```
-
-VC Partner receives the @mention, decides whether to consult counsel, and replies. The whole negotiation unfolds in the room.
-
-<img src="img/screenshots/chat-room.png" alt="Chat room showing agents negotiating with @mention routing, events channel filter, and participants panel" />
-
----
-
 ## The demo architecture
 
 Four agents, one room, mention-routed.
@@ -199,7 +101,123 @@ Four agents, one room, mention-routed.
           never reads those)
 ```
 
-Two lead negotiators drive the conversation and hold walk-away lines. Two counsel agents only speak when their principal @mentions them. Both sides see both counsels' replies — deliberate, because it models a real four-seat mediation where consulting counsel is a public signaling move as much as a private question.
+This topology mirrors a real four-seat mediation: consulting counsel is a public signaling move as much as a private question, and both sides seeing counsel's replies is a deliberate design choice.
+
+---
+
+## Manual Quick Start
+
+> Steps below use `series_a`. To use `patent_licensing` instead, substitute the scenario name and agent names throughout.
+
+### 1. Get the repo
+
+```bash
+git clone https://github.com/thenvoi/legal-demo legal-demo
+cd legal-demo
+```
+
+### 2. Install dependencies
+
+```bash
+# With uv (faster):
+uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt
+
+# With pip:
+python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+```
+
+### 3. Sign up and get credentials
+
+**Thenvoi account:** Go to [thenvoi.com](https://www.thenvoi.com) → "Get started for free". Sign up with your email.
+
+**User API key:** In the app, go to your name (top-left) → Settings → REST API Keys → "Create New API Key". Copy it.
+
+<img src="img/screenshots/user-apikey.png" alt="Settings page — REST API Keys section with Create New API Key button highlighted" />
+<sub>Settings → REST API Keys. Click "Create New API Key", give it a name, and copy the value.</sub>
+
+**Model API key:** The defaults use OpenAI. Put both keys in `.env`:
+
+```bash
+cp .env.example .env
+# Add THENVOI_API_KEY_USER and OPENAI_API_KEY
+```
+
+No OpenAI key? See [Swap a framework](#swap-a-framework) — you can run the whole demo on a Codex subscription, Claude subscription, or a local model with no API key.
+
+### 4a. Create the four agents on Thenvoi
+
+Go to [app.thenvoi.com/agents](https://app.thenvoi.com/agents) → "Create new agent". For each agent:
+
+1. Enter the Agent Name exactly as shown in the table below
+2. Add a short description of the agent's role
+3. Check **"External Agent (brings its own reasoning loop)"**
+4. Click **"Create External Agent"**
+
+<img src="img/screenshots/create-agent.png" alt="New agent form filled in with name and description, External Agent checkbox ticked, Create External Agent button highlighted" width="460" />
+<sub>Fill in the name and description, check External Agent, then click Create External Agent.</sub>
+
+### 4b. Copy credentials into the config file
+
+After creating each agent, copy its **API key** (shown once — copy it immediately) and its **Agent UUID** from the top of the agent's detail page.
+
+<img src="img/screenshots/agent-credentials.png" alt="Agent detail page showing the Agent UUID row and API Key Management panel with Regenerate API Key button" />
+<sub>Agent UUID is always visible at the top. The API key is shown only at creation — use Regenerate API Key if you missed it.</sub>
+
+The four agents for `series_a`:
+
+| Agent Name | Config key |
+|---|---|
+| Startup CEO | `startup_ceo` |
+| Startup Lawyer | `startup_lawyer` |
+| VC Partner | `vc_partner` |
+| VC Legal Counsel | `vc_legal_counsel` |
+
+```bash
+cp agent_config.series_a.yaml.example agent_config.series_a.yaml
+# Paste agent_id and api_key for each agent
+```
+
+### 5. Start the agents and kick off a negotiation
+
+```bash
+python run_all.py --scenario series_a
+```
+
+You should see four lines like `[startup_ceo] Startup CEO agent is online.`
+
+In your browser, go to [app.thenvoi.com](https://app.thenvoi.com), create a new chat room, add all four agents as participants, then send the opening message:
+
+```
+@VC Partner Thank you for taking this meeting. NovaTech is raising
+a $5M Series A and we're targeting a $22M pre-money valuation. Two
+terms on the table: valuation and board composition. Your move.
+```
+
+VC Partner receives the @mention, decides whether to consult counsel, and replies. The whole negotiation unfolds in the room.
+
+<img src="img/screenshots/chat-room.png" alt="Chat room showing the four agents negotiating — @mention tags highlighted, participants panel on the right, events channel filter at the top" />
+<sub>The negotiation in progress. @mentions route messages to the right agent; the events panel shows the separate channel for thought events.</sub>
+
+Or skip the manual room setup entirely: `python kickoff.py --scenario series_a` creates the room, adds participants, and sends the opening message for you (requires `THENVOI_API_KEY_USER` in `.env`).
+
+---
+
+## Optional automation
+
+Two helper scripts for a one-command path, both requiring `THENVOI_API_KEY_USER` in your `.env`:
+
+```bash
+# Bulk-register all agents for a scenario (writes agent_config.<scenario>.yaml)
+python setup_agents.py --scenario series_a
+
+# Create the room, add participants, and send the opening @mention
+python kickoff.py --scenario series_a
+
+# Tear down
+python setup_agents.py --delete --scenario series_a
+```
+
+`setup_agents.py` replaces the manual steps in 4a and 4b above. `kickoff.py` replaces the manual room setup in step 5. The manual path is the recommended way to get familiar with the platform.
 
 ---
 
@@ -323,9 +341,29 @@ Some tool ideas that would meaningfully upgrade this demo:
 
 If a tool you want already exists as an MCP server (Harvey, a filesystem server, a fetch server, anything from the [MCP registry](https://modelcontextprotocol.io)), you don't need to hand-write a Pydantic model for it. `mcp_tools.py` in this repo wraps the official `mcp` Python client: point it at any stdio or streamable-HTTP MCP server, call `start()`, and you get back a list of `CustomToolDef` tuples ready for `create_adapter(..., additional_tools=...)`.
 
+### Example: a local stdio MCP server
+
+The quickest way to try MCP — no credentials needed:
+
+```python
+provider = MCPToolsProvider.stdio(
+    command="uvx",
+    args=["mcp-server-time"],
+)
+tools = await provider.start()
+```
+
+Or as a context manager:
+
+```python
+async with MCPToolsProvider.http(url=..., headers=...) as tools:
+    adapter = create_adapter(..., additional_tools=tools)
+    # agent runs inside the with-block
+```
+
 ### Example: Harvey MCP
 
-[Harvey's MCP server](https://developers.harvey.ai/guides/harvey_mcp) exposes Harvey's legal workflows over streamable HTTP with OAuth. Once you have a Harvey account and bearer token:
+If you have enterprise Harvey access, [Harvey's MCP server](https://developers.harvey.ai/guides/harvey_mcp) exposes legal workflows over streamable HTTP with OAuth. Once you have a bearer token:
 
 ```python
 from mcp_tools import MCPToolsProvider
@@ -348,24 +386,6 @@ finally:
     await provider.stop()
 ```
 
-### Example: a local stdio MCP server
-
-```python
-provider = MCPToolsProvider.stdio(
-    command="uvx",
-    args=["mcp-server-time"],
-)
-tools = await provider.start()
-```
-
-Or as a context manager:
-
-```python
-async with MCPToolsProvider.http(url=..., headers=...) as tools:
-    adapter = create_adapter(..., additional_tools=tools)
-    # agent runs inside the with-block
-```
-
 MCP tools use the same portable tuple format, so the same framework compatibility applies: `codex`, `claude_sdk`, `anthropic`, `gemini`, `google_adk`. If an agent is on `pydantic_ai` or `langgraph`, switch its framework in `agents.yaml` first.
 
 ---
@@ -373,6 +393,7 @@ MCP tools use the same portable tuple format, so the same framework compatibilit
 ## Project layout
 
 ```
+.env.example             environment variable template (copy to .env)
 adapter_factory.py       create_adapter(), load_credentials(), credentials_path()
 tool_filter.py           per-process tool-list filtering
 mcp_tools.py             MCPToolsProvider — wrap any MCP server as CustomToolDef tuples
@@ -390,6 +411,9 @@ scenarios/
     vc_legal_counsel.py
   patent_licensing/
     ... same shape
+
+agent_config.series_a.yaml.example      credentials template (copy, fill in UUIDs + keys)
+agent_config.patent_licensing.yaml.example
 ```
 
 An agent module is short. It builds a `CUSTOM_SECTION` system-prompt string, asks the factory for an adapter, loads its credentials from `agent_config.<scenario>.yaml`, and calls `Agent.create(...).run()`. All framework-specific wiring lives in `adapter_factory.py`. Scenario code never imports a framework directly, which is why swapping frameworks is a yaml edit.
@@ -398,7 +422,7 @@ An agent module is short. It builds a `CUSTOM_SECTION` system-prompt string, ask
 
 ## Where to take it
 
-The scaffolding is done. Here's a menu of directions from quick to involved, followed by two worked examples.
+The scaffolding is done. Below is a menu of directions, organized into ideas for extending the scenario, adding safety properties, going deeper on a single feature, and one challenge that goes cross-team.
 
 ### New scenarios
 
@@ -441,6 +465,22 @@ Ask them for the handle of one of their agents, add it through the Contacts tab 
 
 ---
 
+## Tips for writing good legal agents
+
+Prompts live in `scenarios/<name>/<agent>.py` in the `CUSTOM_SECTION` variable.
+
+**Hardcode walk-away lines.** Agents without an explicit floor drift toward the middle and give up value. Give your lead negotiator a number and a reason to defend it.
+
+**Separate identity from instructions.** The identity section says who the agent is: name, role, personality. The instructions section says what to do: hold this line, concede on that, escalate to counsel on the other. Mixing the two produces wobbly behavior.
+
+**Tell counsel to stay quiet.** Without an explicit rule, a specialist agent will try to helpfully comment on every message. The prompt should say: respond only when your principal @mentions you.
+
+**Warn counsel that the opposing side can read their replies.** Otherwise counsel will say things like "our walk-away is $18M" in the middle of a public room. A real-world lawyer in a mediation picks their words carefully for exactly this reason.
+
+**Give the leads a termination condition.** Something like "once both sides have confirmed the same terms, send one final confirmation and stop." Without it you get an infinite politeness loop where the two leads re-confirm the deal five times.
+
+---
+
 ## Worked example 1: ethics observer agent
 
 Add a fifth agent that silently audits the negotiation for bar-rule violations and flags them as Thenvoi events. The opposing side never sees the audit channel, but a judge or demo audience can.
@@ -478,41 +518,6 @@ You now have a specialist that can't hallucinate regulatory requirements because
 
 ---
 
-## Tips for writing good legal agents
-
-Prompts live in `scenarios/<name>/<agent>.py` in the `CUSTOM_SECTION` variable.
-
-**Hardcode walk-away lines.** Agents without an explicit floor drift toward the middle and give up value. Give your lead negotiator a number and a reason to defend it.
-
-**Separate identity from instructions.** The identity section says who the agent is: name, role, personality. The instructions section says what to do: hold this line, concede on that, escalate to counsel on the other. Mixing the two produces wobbly behavior.
-
-**Tell counsel to stay quiet.** Without an explicit rule, a specialist agent will try to helpfully comment on every message. The prompt should say: respond only when your principal @mentions you.
-
-**Warn counsel that the opposing side can read their replies.** Otherwise counsel will say things like "our walk-away is $18M" in the middle of a public room. A real-world lawyer in a mediation picks their words carefully for exactly this reason.
-
-**Give the leads a termination condition.** Something like "once both sides have confirmed the same terms, send one final confirmation and stop." Without it you get an infinite politeness loop where the two leads re-confirm the deal five times.
-
----
-
-## Optional automation
-
-Two helper scripts for a one-command path, both requiring `THENVOI_API_KEY_USER` in your `.env`:
-
-```bash
-# Bulk-register all agents for a scenario (writes agent_config.<scenario>.yaml)
-python setup_agents.py --scenario series_a
-
-# Create the room, add participants, and send the opening @mention
-python kickoff.py --scenario series_a
-
-# Tear down
-python setup_agents.py --delete --scenario series_a
-```
-
-The manual path above is the recommended way to get familiar with the platform.
-
----
-
 ## Troubleshooting
 
 **Agents boot but nothing happens after kickoff:** the `@mention` has to name an agent actually in the room. Thenvoi only routes messages to explicitly mentioned participants, so a missing or misspelled @mention produces silence.
@@ -537,3 +542,5 @@ The manual path above is the recommended way to get familiar with the platform.
 ---
 
 MIT. Fork it, break it, ship it.
+
+<sub>Originally built for the <a href="https://luma.com/9x9fd4lk">LLM × Law Hackathon #6</a> at Stanford Law School, April 12 2026.</sub>
