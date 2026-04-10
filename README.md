@@ -22,7 +22,7 @@ Read the file at the URL below and walk me through the setup:
 https://raw.githubusercontent.com/thenvoi/legal-demo/refs/heads/main/AGENT_INSTALL.md
 ```
 
-Your agent will handle the rest: checking the repo, installing dependencies, creating agents on Thenvoi, writing credentials into the right files, and helping you start building.
+Your agent will handle the rest: checking out the repo, installing dependencies, creating agents on Thenvoi, writing credentials into the right files, and helping you start building.
 
 ---
 
@@ -422,40 +422,37 @@ An agent module is short. It builds a `CUSTOM_SECTION` system-prompt string, ask
 
 ## Where to take it
 
-The scaffolding is done. Below is a menu of directions, organized into ideas for extending the scenario, adding safety properties, going deeper on a single feature, and one challenge that goes cross-team.
+The scaffolding is done. Below is a menu of directions, organized into ideas for extending the scenario, going deeper on a single feature, and one challenge that goes cross-team.
 
 ### New scenarios
 
-Replace the prompts and yaml with a different area of legal practice:
+Replace the prompts and yaml with a different legal context or safety constraint:
 
-- Contract redlining. Buyer's counsel and seller's counsel mark up a draft MSA clause by clause, backed by a tool that reads the current draft and records edits.
-- Discovery scope dispute. Plaintiff and defendant negotiate what has to be produced, refereed by a magistrate-judge agent.
-- Divorce mediation. Two parties, a mediator, and an optional shared financial advisor.
-- Settlement conference. Plaintiff and defendant work toward a dollar number with a court-appointed mediator.
-- Policy drafting. Regulators and industry counsel co-draft a model rule.
-- Internal strategy meeting. One firm, partners and associates, deciding how to staff a case. Same demo code, different room topology (collaborative instead of adversarial).
-
-### Safety and trust
-
-- Citation enforcement. A preprocessor that rejects any legal claim without a statute or case cite. Agents have to call a `cite_source` tool before making assertions.
-- Jailbreak resistance. Can the opposing side extract your walk-away number by asking cleverly? Add a preprocessor that redacts walk-away language before messages go out, then try to break your own redactor.
-- Ethics observer. A fifth agent, silent by default, that audits for bar-rule violations and flags them as events. The opposing side never sees the audit channel, but a judge can.
-- Confidence scoring. Agents tag every factual claim with a confidence value. Low-confidence claims trigger a counsel consultation before the message is sent.
-- Human-in-the-loop approval. Counsel's messages are held for human review before hitting the room. The codex adapter has an `approval_mode` field; flip it to `manual` and wire up a tiny approval UI.
-- Refusal patterns. The lawyer refuses to sign off on unconscionable terms and explains why in the room, forcing the opposing side to justify their position.
+- **Contract redlining.** Buyer's counsel and seller's counsel mark up a draft MSA clause by clause, backed by a tool that reads the current draft and records edits.
+- **Discovery scope dispute.** Plaintiff and defendant negotiate what has to be produced, refereed by a magistrate-judge agent.
+- **Divorce mediation.** Two parties, a mediator, and an optional shared financial advisor.
+- **Settlement conference.** Plaintiff and defendant work toward a dollar number with a court-appointed mediator.
+- **Policy drafting.** Regulators and industry counsel co-draft a model rule.
+- **Internal strategy meeting.** One firm, partners and associates, deciding how to staff a case. Same demo code, different room topology (collaborative instead of adversarial).
+- **Citation enforcement.** A preprocessor that rejects any legal claim without a statute or case cite. Agents have to call a `cite_source` tool before making assertions.
+- **Jailbreak resistance.** Can the opposing side extract your walk-away number by asking cleverly? Add a preprocessor that redacts walk-away language before messages go out, then try to break your own redactor.
+- **Ethics observer.** A fifth agent, silent by default, that audits for bar-rule violations and flags them as events. The opposing side never sees the audit channel, but a judge can.
+- **Confidence scoring.** Agents tag every factual claim with a confidence value. Low-confidence claims trigger a counsel consultation before the message is sent.
+- **Human-in-the-loop approval.** Counsel's messages are held for human review before hitting the room. The codex adapter has an `approval_mode` field; flip it to `manual` and wire up a tiny approval UI.
+- **Refusal patterns.** The lawyer refuses to sign off on unconscionable terms and explains why in the room, forcing the opposing side to justify their position.
 
 ### Document integration
 
-- RAG-backed counsel. Hook a specialist agent up to a vector store of case law or regulatory guidance. Every reply carries real citations.
-- Term-sheet generation. When the negotiation concludes, a scribe agent converts agreed terms into a structured term sheet.
-- PDF ingestion. IP analyst reads a patent PDF via a tool and extracts claims into a table.
+- **RAG-backed counsel.** Hook a specialist agent up to a vector store of case law or regulatory guidance. Every reply carries real citations.
+- **Term-sheet generation.** When the negotiation concludes, a scribe agent converts agreed terms into a structured term sheet.
+- **PDF ingestion.** IP analyst reads a patent PDF via a tool and extracts claims into a table.
 
 ### Framework demonstrations
 
-- Swap one agent to `claude_sdk` with `max_thinking_tokens: 16000` to show long-form reasoning on a hard clause.
-- Swap one to `pydantic_ai` and force it to emit structured counter-offers (typed dicts, validated at the Python level, rejected if invalid).
-- Use `langgraph` for a planner agent that runs an internal multi-step loop before responding to the other side.
-- Use the `a2a` adapter to accept agents from teams that built on Google's A2A protocol.
+- **Long-form reasoning.** Swap one agent to `claude_sdk` with `max_thinking_tokens: 16000` to show structured thinking on a hard clause.
+- **Structured counter-offers.** Swap one to `pydantic_ai` and force it to emit typed dicts validated at the Python level — rejected if the schema doesn't match.
+- **Internal planning loop.** Use `langgraph` for a planner agent that runs a multi-step internal loop before responding to the other side.
+- **Cross-org agents.** Use the `a2a` adapter to accept agents from teams that built on Google's A2A protocol.
 
 ### Cross-team challenge
 
