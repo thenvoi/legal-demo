@@ -4,32 +4,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A multi-agent negotiation demo where 4 AI agents (3 frameworks: LangGraph, Anthropic SDK, PydanticAI) negotiate through the Thenvoi platform. Supports multiple negotiation scenarios, each with its own agents and domain-specific prompts. All agents share a single room per scenario.
+A multi-agent negotiation demo where 4 AI agents negotiate through the Thenvoi platform. Supports multiple negotiation scenarios, each with its own agents, domain-specific prompts, and isolated credentials. All four agents in a scenario share a single room.
+
+Every agent is framework-agnostic: the choice of adapter (`codex`, `claude_sdk`, `anthropic`, `pydantic_ai`, `langgraph`, `gemini`, `google_adk`) is driven by a per-scenario `agents.yaml`, not hardcoded in the agent module. Swap any agent to a different framework by editing yaml alone. Current defaults: `series_a` ships 1 `pydantic_ai` + 3 `langgraph` on `gpt-5.4`; `patent_licensing` ships 1 `langgraph` + 3 `pydantic_ai` on `gpt-5.4-mini`. Both default mixes require `OPENAI_API_KEY`. Each `agents.yaml` has commented alternative blocks at the top (codex subscription, claude_sdk subscription, langgraph + local model) so switching away from OpenAI is a copy-paste, not a refactor.
 
 **Available scenarios:**
-- `patent_licensing` (default) — TechVentures (buyer) + BioGen (seller) negotiate a patent-licensing agreement
-- `series_a` — NovaTech (startup) + Apex Ventures (VC) negotiate Series A funding terms
+- `series_a` (default) — NovaTech (startup) + Apex Ventures (VC) negotiate Series A funding terms
+- `patent_licensing` — TechVentures (buyer) + BioGen (seller) negotiate a patent-licensing agreement
 
 ## Commands
 
 ```bash
 # Setup
-cp .env.example .env              # then fill in API keys
+cp .env.example .env                                     # fill in THENVOI_API_KEY_USER
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python setup_agents.py             # registers agents for default scenario
-python setup_agents.py --scenario series_a   # registers agents for Series A
-python setup_agents.py --delete    # tears down agents
 
-# Run
-python run_all.py                              # launches default scenario agents
-python run_all.py --scenario series_a          # launches Series A agents
-python run_all.py --scenario series_a vc_*     # launch subset (glob patterns)
+# Register agents (scenarios are isolated — run both if you want both)
+python setup_agents.py                                   # series_a (default)
+python setup_agents.py --scenario patent_licensing
+python setup_agents.py --delete                          # tear down series_a
+python setup_agents.py --delete --scenario patent_licensing
+
+# Run agents
+python run_all.py                                        # series_a (default)
+python run_all.py --scenario patent_licensing
+python run_all.py --scenario series_a vc_*               # glob filter
 
 # Kickoff (separate terminal, after agents are running)
-python kickoff.py                              # starts default scenario negotiation
-python kickoff.py --scenario series_a          # starts Series A negotiation
-python kickoff.py --no-clean                   # skip deactivating old rooms
-python kickoff.py --message "..."              # custom kickoff message
+python kickoff.py                                        # series_a (default)
+python kickoff.py --scenario patent_licensing
+python kickoff.py --no-clean                             # skip deactivating old rooms
+python kickoff.py --message "..."                        # custom kickoff message
 ```
 
 No test suite or linting config exists yet.
@@ -39,30 +45,38 @@ No test suite or linting config exists yet.
 **Scenario structure:**
 ```
 scenarios/
-  patent_licensing/
-    scenario.py          # AGENTS, AGENT_MODULES, get_kickoff_config()
-    tv_contract_attorney.py
-    tv_ip_analyst.py
-    bg_licensing_counsel.py
-    bg_regulatory_advisor.py
   series_a/
-    scenario.py
+    scenario.py          # AGENTS, AGENT_MODULES, get_kickoff_config()
+    agents.yaml          # per-agent framework + model + adapter options
     startup_ceo.py
     startup_lawyer.py
     vc_partner.py
     vc_legal_counsel.py
+  patent_licensing/
+    scenario.py
+    agents.yaml
+    tv_contract_attorney.py
+    tv_ip_analyst.py
+    bg_licensing_counsel.py
+    bg_regulatory_advisor.py
 ```
 
 Each `scenario.py` exports:
-- `AGENTS` — list of agent definitions for `setup_agents.py`
+- `AGENTS` — list of agent definitions for `setup_agents.py` (config_key, name, description)
 - `AGENT_MODULES` — module paths for `run_all.py`
 - `get_kickoff_config(agent_ids, agent_names)` — room topology + messages for `kickoff.py`
 
+Each `agents.yaml` maps `config_key` → adapter config. `framework` and `model` are required; every other key (e.g. `reasoning_effort`, `max_thinking_tokens`, `temperature`) is forwarded into the adapter constructor by `adapter_factory.create_adapter`. That means adding an adapter-specific knob never requires factory edits.
+
+**Config key invariant:** for each agent, the module filename, the `config_key` in `scenario.py`'s `AGENTS`, the key in `agents.yaml`, and the argument to `create_adapter`/`load_credentials` must all match. See `vc_legal_counsel` across the series_a scenario for the canonical pattern.
+
 **Core pattern** (all agents follow this):
 ```python
-adapter = <FrameworkAdapter>(...)           # LangGraphAdapter / AnthropicAdapter / PydanticAIAdapter
-agent = Agent.create(adapter=adapter, agent_id=..., api_key=...)
-await agent.run()                           # WebSocket connection to Thenvoi
+scenario = os.path.basename(os.path.dirname(__file__))
+agent_id, api_key = load_credentials("<key>", scenario)
+adapter = create_adapter("<key>", CUSTOM_SECTION, scenario)
+agent = Agent.create(adapter=adapter, agent_id=agent_id, api_key=api_key, ...)
+await agent.run()
 ```
 
 Agent behavior is driven by detailed `CUSTOM_SECTION` system prompt strings, not hardcoded logic.
@@ -73,14 +87,19 @@ Agent behavior is driven by detailed `CUSTOM_SECTION` system prompt strings, not
 - Counsel/specialists use guarded language since the opposing side can see everything
 
 **Data flow:**
-- `setup_agents.py` uses REST (`thenvoi_rest.AsyncRestClient` with User API key) to register agents and get per-agent credentials
-- `kickoff.py` uses REST to create rooms, add participants, and send kickoff/briefing messages based on `scenario.py`
+- `setup_agents.py` uses REST (`thenvoi_rest.AsyncRestClient` with the User API key) to register agents and get per-agent credentials, written to `agent_config.<scenario>.yaml`
+- `kickoff.py` reads `agent_config.<scenario>.yaml`, creates rooms, adds participants, and sends kickoff/briefing messages based on `scenario.py`
 - `run_all.py` spawns each agent as a `multiprocessing.Process`; each calls `asyncio.run(agent_module.main())`
 - At runtime, agents connect via WebSocket and use Thenvoi tools: `thenvoi_send_event`, `thenvoi_send_message`, etc.
 
+**Tool filtering:** `tool_filter.remove_tools(...)` pops entries from `thenvoi.runtime.tools.TOOL_DEFINITIONS`. Every adapter that reads tools through `AgentToolsProtocol.get_tool_schemas` (codex, anthropic, pydantic_ai, claude_sdk, gemini, google_adk) is filtered by that single pop. LangGraph and CrewAI have their own tool builders and are monkey-patched separately — each patch is guarded by `try/except ImportError`, so the filter works fine on environments without those optional deps.
+
+**MCP integration:** `mcp_tools.MCPToolsProvider` wraps the official `mcp` Python client and turns any stdio or streamable-HTTP MCP server's tool list into portable `CustomToolDef` tuples that slot into `create_adapter(..., additional_tools=...)`. The provider uses an `AsyncExitStack` for lifetime management; typical use is `await provider.start()` near the top of an agent module's `main()` and `await provider.stop()` in a `finally` block, or the `async with` form. Only the five portable-format adapters (codex, claude_sdk, anthropic, gemini, google_adk) can consume the output — pydantic_ai and langgraph want framework-native formats, so swap those agents' frameworks first if you need MCP on them.
+
 **Key config files:**
-- `.env` -- `THENVOI_API_KEY_USER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
-- `agent_config.yaml` -- per-agent `agent_id` + `api_key` (generated by `setup_agents.py`, git-ignored)
+- `.env` — `THENVOI_API_KEY_USER` (only required if you use `setup_agents.py` or `kickoff.py`; the manual UI-based flow documented in README.md doesn't need it)
+- `agent_config.<scenario>.yaml` — per-agent `agent_id` + `api_key`. Git-ignored. Either generated by `setup_agents.py` or hand-filled by copying `agent_config.<scenario>.yaml.example`.
+- `.agent_ids.<scenario>.txt` — per-scenario agent-id list used by `setup_agents.py --delete` (git-ignored; only created by the automated path)
 
 **Cleanup caveat:** The Thenvoi API has no delete-room endpoint. `kickoff.py` cleans up old rooms by default (removes participants); use `--no-clean` to skip. For owned rooms (where self-removal returns 403), it removes all other participants instead to deactivate them.
 

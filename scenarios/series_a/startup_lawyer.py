@@ -14,9 +14,8 @@ import os
 from dotenv import load_dotenv
 
 from thenvoi import Agent
-from thenvoi.config import load_agent_config
 
-from adapter_factory import create_adapter
+from adapter_factory import create_adapter, load_credentials
 from platform_url import get_platform_url, get_ws_url
 from scenarios.prompt_templates import build_specialist_prompt
 from self_aware_preprocessor import SelfAwarePreprocessor
@@ -66,9 +65,8 @@ async def main() -> None:
     from tool_filter import remove_tools
     remove_tools("thenvoi_add_participant", "thenvoi_lookup_peers", "thenvoi_create_chatroom")
 
-    agent_id, api_key = load_agent_config("startup_lawyer")
-
     scenario = os.path.basename(os.path.dirname(__file__))
+    agent_id, api_key = load_credentials("startup_lawyer", scenario)
     adapter = create_adapter("startup_lawyer", CUSTOM_SECTION, scenario)
 
     agent = Agent.create(
