@@ -250,11 +250,92 @@ A handful of tool ideas that would meaningfully upgrade this demo:
 - `draft_term_sheet(agreed_terms)` — render the agreed terms into a markdown or PDF template.
 - `search_precedent(fact_pattern)` — semantic search over a historical deal corpus so counsel can argue from comparables.
 
+Already-written tools count too: if the capability you want exists as an [MCP server](https://modelcontextprotocol.io), skip the Pydantic model and see [Attaching an MCP server](#attaching-an-mcp-server) below.
+
+## Attaching an MCP server
+
+If the tool you want already exists as an MCP server — Harvey, a filesystem server, a fetch server, your own `FastMCP` experiment, anything from the [MCP registry](https://modelcontextprotocol.io) — you don't need to hand-write a Pydantic model for it. `mcp_tools.py` in this repo wraps the official `mcp` Python client: point it at any stdio or streamable-HTTP MCP server, call `start()`, and you get back a list of `CustomToolDef` tuples ready for `create_adapter(..., additional_tools=...)`. The helper introspects each tool's JSON input schema, synthesises a Pydantic model per tool, and routes calls back through the live MCP session.
+
+### Example: Harvey MCP
+
+[Harvey's MCP server](https://developers.harvey.ai/guides/harvey_mcp) exposes Harvey's legal workflows — document analysis, vault queries, research — over streamable HTTP with per-user OAuth. Once a hacker has a Harvey account and an OAuth bearer token, dropping Harvey into any agent is a few extra lines in that agent module's `main()`:
+
+```python
+# scenarios/patent_licensing/bg_regulatory_advisor.py
+# Requires: framework: claude_sdk (or any other portable-tuple adapter)
+# See the commented alternatives at the top of agents.yaml to switch.
+import os
+from mcp_tools import MCPToolsProvider
+
+async def main() -> None:
+    load_dotenv()
+    remove_tools("thenvoi_add_participant", "thenvoi_lookup_peers", "thenvoi_create_chatroom")
+
+    scenario = os.path.basename(os.path.dirname(__file__))
+
+    provider = MCPToolsProvider.http(
+        url="https://mcp.harvey.ai/mcp",
+        headers={"Authorization": f"Bearer {os.environ['HARVEY_OAUTH_TOKEN']}"},
+    )
+    harvey_tools = await provider.start()
+
+    try:
+        agent_id, api_key = load_credentials("bg_regulatory_advisor", scenario)
+        adapter = create_adapter(
+            "bg_regulatory_advisor",
+            CUSTOM_SECTION,
+            scenario,
+            additional_tools=harvey_tools,
+        )
+        agent = Agent.create(
+            adapter=adapter,
+            agent_id=agent_id,
+            api_key=api_key,
+            ws_url=get_ws_url(),
+            rest_url=get_platform_url(),
+            preprocessor=SelfAwarePreprocessor(),
+        )
+        await agent.run()
+    finally:
+        await provider.stop()
+```
+
+The provider opens the HTTP MCP session, runs the initialise handshake, calls `list_tools`, and hands you back one `CustomToolDef` per Harvey tool. The callable inside each tuple forwards to `session.call_tool` over the open session, so the agent can invoke Harvey vault queries and research workflows as naturally as any other tool the LLM sees. Harvey's MCP scopes every call to the authenticated user's permissions, so the agent only ever sees what the token's owner is allowed to see.
+
+### Example: a local stdio MCP server
+
+If you don't have Harvey credentials handy — or you want to experiment with a filesystem, fetch, time, or custom MCP server — use the stdio factory:
+
+```python
+provider = MCPToolsProvider.stdio(
+    command="uvx",
+    args=["mcp-server-time"],
+)
+tools = await provider.start()
+# ... same pattern: pass tools to create_adapter, wrap in try/finally ...
+```
+
+### Which adapters work with MCP tools?
+
+`MCPToolsProvider` returns the portable `CustomToolDef` tuple format, so the same compatibility matrix from [Adding your own tools](#adding-your-own-tools) applies: `codex`, `claude_sdk`, `anthropic`, `gemini`, and `google_adk`. If the agent you want to attach MCP to is currently on `pydantic_ai` or `langgraph`, switch its framework in `agents.yaml` first (those two take framework-native tool formats and won't accept the tuple shape).
+
+### Lifecycle
+
+The MCP session is a long-lived async context: opening the transport, running the JSON-RPC handshake, and keeping the subprocess (stdio) or HTTP connection alive for the duration of the agent run. `MCPToolsProvider` owns that lifetime through an `AsyncExitStack`, so pair every `await provider.start()` with a `await provider.stop()` in a `finally` block, or use it as an async context manager:
+
+```python
+async with MCPToolsProvider.http(url=..., headers=...) as tools:
+    adapter = create_adapter(..., additional_tools=tools)
+    # agent runs inside the with-block — session closes cleanly on exit
+    ...
+```
+
 ## Project layout
 
 ```
 adapter_factory.py       create_adapter(), load_credentials(), credentials_path()
 tool_filter.py           per-process tool-list filtering (blocks tools you don't want the LLM to call)
+mcp_tools.py             MCPToolsProvider — wrap any MCP server as CustomToolDef tuples
 run_all.py               launches all agents in a scenario as subprocesses
 setup_agents.py          optional: bulk-register agents via the Human API
 kickoff.py               optional: bulk-create the room and send the opener
