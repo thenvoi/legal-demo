@@ -12,6 +12,18 @@
 
 ---
 
+## Agent Quick Start
+
+If you're working with an AI agent (Claude, Codex, Cursor, etc.), paste this:
+
+```
+Read https://raw.githubusercontent.com/thenvoi/legal-demo/refs/heads/main/AGENT_INSTALL.md and walk me through the setup.
+```
+
+Your agent will handle the rest: checking the repo, installing dependencies, creating agents on Thenvoi, writing credentials into the right files, and helping you start building.
+
+---
+
 A working baseline for the [LLM × Law Hackathon #6](https://luma.com/9x9fd4lk) at Stanford Law School, April 12 2026. Clone it, plug in your credentials, watch the agents negotiate, then build on top of it.
 
 ---
@@ -62,18 +74,6 @@ Two scenarios ship out of the box. Same architecture, different cast and prompts
 | BG Regulatory Advisor | BioGen | Specialist — FDA, export controls, GDPR |
 
 Both scenarios default to a mix of `pydantic_ai` and `langgraph` on OpenAI models. One yaml line per agent switches any of them to Codex, Claude, Gemini, or a local model — see [Swap a framework](#swap-a-framework).
-
----
-
-## Agent Quick Start
-
-If you're working with an AI agent (Claude, Codex, Cursor, etc.), paste this:
-
-```
-Read https://raw.githubusercontent.com/thenvoi/legal-demo/refs/heads/main/AGENT_INSTALL.md and walk me through the setup.
-```
-
-Your agent will handle the rest: checking the repo, installing dependencies, creating agents on Thenvoi, writing credentials into the right files, and helping you start building.
 
 ---
 
