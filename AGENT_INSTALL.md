@@ -62,21 +62,17 @@ git clone https://github.com/thenvoi/legal-demo .
 
 ### A2. Install dependencies
 
-Check what's available:
+Run this — it uses `uv` if available, otherwise falls back to a standard venv:
 
 ```bash
-which uv; which python3; which pip3; python3 --version
+if command -v uv &>/dev/null; then
+  uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt
+else
+  python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+fi
 ```
 
-- If `uv` is found:
-  ```bash
-  uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt
-  ```
-- If only `python3`/`pip3`:
-  ```bash
-  python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-  ```
-- If Python is missing: tell the user they need Python 3.11+ and point them to python.org.
+If Python itself is missing, tell the user they need Python 3.11+ and point them to python.org.
 
 ### A3. Detect what model access they have
 

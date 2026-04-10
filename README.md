@@ -17,7 +17,9 @@
 If you're working with an AI agent (Claude, Codex, Cursor, etc.), paste this:
 
 ```
-Read https://raw.githubusercontent.com/thenvoi/legal-demo/refs/heads/main/AGENT_INSTALL.md and walk me through the setup.
+Read the file at the URL below and walk me through the setup:
+
+https://raw.githubusercontent.com/thenvoi/legal-demo/refs/heads/main/AGENT_INSTALL.md
 ```
 
 Your agent will handle the rest: checking the repo, installing dependencies, creating agents on Thenvoi, writing credentials into the right files, and helping you start building.
