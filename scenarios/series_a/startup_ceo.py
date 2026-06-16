@@ -51,6 +51,7 @@ CUSTOM_SECTION = build_lead_prompt(
     ),
     topics="",
     closing_action="We look forward to receiving the term sheet from your side.",
+    invite_counsel=True,
 )
 
 
@@ -66,7 +67,7 @@ async def main() -> None:
     custom_section = inject_team_subject_id("startup_ceo", CUSTOM_SECTION)
 
     scenario = os.path.basename(os.path.dirname(__file__))
-    adapter = create_adapter("startup_ceo", custom_section, scenario)
+    adapter = create_adapter("startup_ceo", custom_section, scenario, can_invite=True)
 
     agent = Agent.create(
         adapter=adapter,

@@ -62,41 +62,20 @@ def get_kickoff_config(agent_ids: dict, agent_names: dict) -> dict:
             {
                 "name": "negotiation",
                 "owner": "startup_ceo",
-                "participants": ["startup_lawyer", "vc_partner", "vc_counsel"],
+                "participants": ["vc_partner"],
                 "message": (
                     "Thank you for taking this meeting. NovaTech is raising "
                     "a $5M Series A. We're an AI-powered drug-discovery platform with "
                     "$1.2M ARR growing 3x year-over-year.\n\n"
-                    "Introductions: I'm the CEO of NovaTech. With me is "
-                    "our legal counsel, Startup Lawyer. On the other side we have "
-                    "@VC Partner from Apex Ventures and their counsel, VC Lawyer.\n\n"
+                    "Introductions: I'm the CEO of NovaTech, negotiating directly with "
+                    "@VC Partner from Apex Ventures. We'll each bring in our legal counsel "
+                    "as specific terms require.\n\n"
                     "Two terms to agree on:\n"
                     "1. Valuation and investment amount\n"
                     "2. Board composition and governance rights\n\n"
                     "Let's work through them in order."
                 ),
                 "mentions": ["vc_partner"],
-                "briefings": [
-                    {
-                        "sender": "startup_lawyer",
-                        "mentions": ["startup_ceo"],
-                        "message": (
-                            "Before we open with Apex, I'd recommend we "
-                            "align on our valuation floor and board red lines. "
-                            "Want me to lay out the key considerations on "
-                            "valuation first?"
-                        ),
-                    },
-                    {
-                        "sender": "vc_counsel",
-                        "mentions": ["vc_partner"],
-                        "message": (
-                            "Before we respond to their opening, let me "
-                            "outline our valuation strategy and the ownership "
-                            "thresholds we should protect. Ready when you are."
-                        ),
-                    },
-                ],
             },
         ]
     }

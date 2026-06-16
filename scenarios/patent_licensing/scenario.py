@@ -65,40 +65,20 @@ def get_kickoff_config(agent_ids: dict, agent_names: dict) -> dict:
             {
                 "name": "negotiation",
                 "owner": "tv_contract_attorney",
-                "participants": ["tv_ip_analyst", "bg_licensing_counsel", "bg_regulatory_advisor"],
+                "participants": ["bg_licensing_counsel"],
                 "message": (
                     "TechVentures is interested in licensing BioGen's "
                     "diagnostic-biomarker patent portfolio (12 patent families) for our "
                     "AI-powered diagnostic platform.\n\n"
-                    "Introductions: I'm TechVentures' Contract Attorney. With me is "
-                    "our IP Analyst, TechVentures IP Analyst. On the other side we have "
-                    "@BioGen Licensing Counsel and their regulatory advisor, BioGen Regulatory Advisor.\n\n"
+                    "Introductions: I'm TechVentures' Contract Attorney, negotiating directly "
+                    "with @BioGen Licensing Counsel. We'll each bring in our specialists as "
+                    "specific terms require.\n\n"
                     "Two terms to agree on:\n"
                     "1. Royalty rate and structure\n"
                     "2. License scope (field-of-use, territory, exclusivity, and term)\n\n"
                     "Let's work through them in order."
                 ),
                 "mentions": ["bg_licensing_counsel"],
-                "briefings": [
-                    {
-                        "sender": "tv_ip_analyst",
-                        "mentions": ["tv_contract_attorney"],
-                        "message": (
-                            "Before we get into royalty numbers, let me "
-                            "flag the key IP scope and prior-art considerations "
-                            "that should inform our opening position."
-                        ),
-                    },
-                    {
-                        "sender": "bg_regulatory_advisor",
-                        "mentions": ["bg_licensing_counsel"],
-                        "message": (
-                            "Before we respond to their opening, I should "
-                            "outline the regulatory and export-control factors "
-                            "that affect our licensing position."
-                        ),
-                    },
-                ],
             },
         ]
     }

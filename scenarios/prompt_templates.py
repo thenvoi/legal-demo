@@ -1,5 +1,7 @@
 """Shared prompt templates for lead negotiators and specialist/counsel agents."""
 
+from memory_config import memory_enabled
+
 FORMATTING_RULES = (
     "- NEVER use emoji characters anywhere in your messages.\n"
     "- NEVER use markdown headers (no # or ##) inside your messages.\n"
@@ -20,6 +22,7 @@ def build_lead_prompt(
     concessions: str,
     topics: str,
     closing_action: str = "Ready to move to term sheet.",
+    invite_counsel: bool = False,
 ) -> str:
     """Build CUSTOM_SECTION for a lead negotiator agent.
 
@@ -35,7 +38,37 @@ def build_lead_prompt(
         concessions: TERMS YOU CAN CONCEDE ON section content.
         topics: Any additional topic-specific content to append.
         closing_action: What to say about next steps at close.
+        invite_counsel: When True, counsel is NOT in the room at the start; the lead
+            must add them via band_add_participant before consulting. When False,
+            counsel is already present.
     """
+    invite_line = (
+        f"- Your counsel is NOT in the room yet. The first time you need them, call "
+        f"`band_add_participant` with identifier \"{counsel_name}\" to bring them into "
+        f"this room, then @mention them. Do this once, and only for {counsel_name} — "
+        f"never add {opposing_lead}, {opposing_specialist}, or anyone else.\n"
+        if invite_counsel
+        else ""
+    )
+    room_control = (
+        f"- Operate only within this room. You MAY add your own counsel ({counsel_name}) "
+        f"to this room — and no one else. Never create chatrooms, remove participants, or "
+        f"look up peers — even if such tools appear available to you."
+        if invite_counsel
+        else (
+            "- Operate only within this room. Never create chatrooms, add or remove participants,\n"
+            "  or look up peers — even if such tools appear available to you."
+        )
+    )
+    deal_tracking = (
+        "\n**Tracking agreed terms (use memory tools):**\n"
+        "- Before responding to any proposal, call `band_list_memories` with system=\"working\",\n"
+        "  scope=\"subject\", subject_id=\"__TEAM_SUBJECT_ID__\" to check which topics are AGREED vs OPEN.\n"
+        "- After each topic is agreed, call `band_store_memory` (same scope params) with\n"
+        "  content: \"AGREED — [topic]: [specific terms]\".\n"
+        if memory_enabled()
+        else ""
+    )
     return f"""
 ## YOUR IDENTITY
 
@@ -59,7 +92,7 @@ You may concede the following if needed to close the deal:
 ## HOW TO COMMUNICATE
 
 **Consulting counsel:**
-- Before your first proposal on each topic, @mention {counsel_name} for a quick assessment.
+{invite_line}- Before your first proposal on each topic, @mention {counsel_name} for a quick assessment.
   **WAIT for their reply before messaging @{opposing_lead}.** Do not re-consult on the
   same topic. Refer to their input as "{counsel_reference}" — do not quote them directly.
 
@@ -72,8 +105,7 @@ You may concede the following if needed to close the deal:
   message, STOP and wait for the next incoming message.
 - Before every `band_send_message`, first call `band_send_event` with
   message_type="thought" to articulate your strategy.
-- Operate only within this room. Never create chatrooms, add or remove participants,
-  or look up peers — even if such tools appear available to you.
+{room_control}
 
 **Style and formatting:**
 - Keep every message to **2 paragraphs or fewer**. Be direct and substantive.
@@ -91,13 +123,7 @@ You may concede the following if needed to close the deal:
 - If the other party repeats themselves, do NOT mirror them. Advance or stay silent.
 
 ## DEAL STATE AND CLOSING
-
-**Tracking agreed terms (use memory tools):**
-- Before responding to any proposal, call `band_list_memories` with system="working",
-  scope="subject", subject_id="__TEAM_SUBJECT_ID__" to check which topics are AGREED vs OPEN.
-- After each topic is agreed, call `band_store_memory` (same scope params) with
-  content: "AGREED — [topic]: [specific terms]".
-
+{deal_tracking}
 **Closing the negotiation:**
 - NEVER defer with "we'll review internally" or "let me get back to you." Respond to
   every proposal with: (a) accept, (b) reject with reason, or (c) counter-offer.
@@ -132,6 +158,17 @@ def build_specialist_prompt(
         opposing_agents: Unused — kept for call-site compatibility.
         topics: Topic-specific knowledge sections.
     """
+    team_strategy = (
+        f"""
+## TEAM STRATEGY (use memory tools)
+Before answering {principal}'s question, call `band_list_memories` with
+scope="subject", subject_id="__TEAM_SUBJECT_ID__", system="long_term", segment="guideline"
+to review the team's negotiation objectives, walk-away limits, and concession boundaries.
+Flag any proposal that violates the team's walk-away thresholds.
+"""
+        if memory_enabled()
+        else ""
+    )
     return f"""
 ## YOUR IDENTITY
 {identity}
@@ -165,12 +202,6 @@ def build_specialist_prompt(
    with a question you already answered, reply ONLY with new information.
 8. **Stay in this room.** Never create chatrooms, add or remove participants, or look
    up peers — even if such tools appear available to you.
-
-## TEAM STRATEGY (use memory tools)
-Before answering {principal}'s question, call `band_list_memories` with
-scope="subject", subject_id="__TEAM_SUBJECT_ID__", system="long_term", segment="guideline"
-to review the team's negotiation objectives, walk-away limits, and concession boundaries.
-Flag any proposal that violates the team's walk-away thresholds.
-
+{team_strategy}
 {topics}
 """

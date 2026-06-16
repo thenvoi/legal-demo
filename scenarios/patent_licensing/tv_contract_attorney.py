@@ -56,6 +56,7 @@ CUSTOM_SECTION = build_lead_prompt(
         "- Proactively raise IP scope and patent validity issues -- you have leverage.\n"
     ),
     closing_action="We look forward to receiving the draft license agreement from your side.",
+    invite_counsel=True,
 )
 
 
@@ -68,7 +69,7 @@ async def main() -> None:
     custom_section = inject_team_subject_id("tv_contract_attorney", CUSTOM_SECTION)
 
     scenario = os.path.basename(os.path.dirname(__file__))
-    adapter = create_adapter("tv_contract_attorney", custom_section, scenario)
+    adapter = create_adapter("tv_contract_attorney", custom_section, scenario, can_invite=True)
 
     agent = Agent.create(
         adapter=adapter,

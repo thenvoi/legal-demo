@@ -22,6 +22,7 @@ import sys
 import yaml
 from dotenv import load_dotenv
 
+from memory_config import memory_enabled
 from platform_url import get_platform_url
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -33,8 +34,8 @@ CONFIG_FILE = "agent_config.yaml"
 
 # Maps team names to env var names for per-team User API keys.
 TEAM_KEY_ENV_VARS = {
-    "startup": "THENVOI_API_KEY_USER_STARTUP",
-    "vc": "THENVOI_API_KEY_USER_VC",
+    "startup": "BAND_API_KEY_USER_STARTUP",
+    "vc": "BAND_API_KEY_USER_VC",
 }
 
 
@@ -44,10 +45,10 @@ def _get_api_key_for_team(team: str | None) -> str:
         key = os.environ.get(TEAM_KEY_ENV_VARS[team])
         if key:
             return key
-    key = os.environ.get("THENVOI_API_KEY_USER")
+    key = os.environ.get("BAND_API_KEY_USER")
     if not key:
         raise ValueError(
-            "THENVOI_API_KEY_USER environment variable is required. "
+            "BAND_API_KEY_USER environment variable is required. "
             "Get a User API key from platform.thenvoi.com account settings."
         )
     return key
@@ -56,7 +57,7 @@ def _get_api_key_for_team(team: str | None) -> str:
 def _all_api_keys() -> set[str]:
     """Collect all unique user API keys from environment."""
     keys = set()
-    for env_var in ["THENVOI_API_KEY_USER", *TEAM_KEY_ENV_VARS.values()]:
+    for env_var in ["BAND_API_KEY_USER", *TEAM_KEY_ENV_VARS.values()]:
         key = os.environ.get(env_var)
         if key:
             keys.add(key)
@@ -217,7 +218,10 @@ async def main() -> None:
     await delete_agents(agent_names=agent_names)
 
     logger.info("Setting up agents for scenario: %s", scenario)
-    team_memories = getattr(scenario_mod, "TEAM_MEMORIES", None)
+    # Memory seeding uses the Enterprise-only Memory API; skip it unless enabled.
+    team_memories = getattr(scenario_mod, "TEAM_MEMORIES", None) if memory_enabled() else None
+    if team_memories is None:
+        logger.info("Memory disabled (set BAND_ENABLE_MEMORY=1 to seed team strategy).")
     await create_agents(scenario_mod.AGENTS, team_memories)
 
 

@@ -116,7 +116,9 @@ class DebouncePreprocessor:
         self._principal_name = principal_name
 
     async def process(self, ctx, event, agent_id: str) -> AgentInput | None:
-        sender_id = getattr(getattr(event, "payload", None), "sender_id", None)
+        payload = getattr(event, "payload", None)
+        sender_id = getattr(payload, "sender_id", None)
+        current_msg_id = getattr(payload, "id", None)
         # band exposes no public queue-peek API, so we read the asyncio.Queue's
         # internal deque (same pattern the SDK uses in _drain_duplicate_from_queue).
         # Verified against band-sdk 1.0.0.  getattr-guarded so that if a future
@@ -124,12 +126,16 @@ class DebouncePreprocessor:
         # instead of raising.
         queued_events = getattr(ctx.queue, "_queue", None)
         if sender_id and queued_events:
-            # Peek at queued events for a newer message from the same sender.
+            # Peek at queued events for a *newer* message from the same sender.
+            # A queued event with the SAME message id is not newer — it is the
+            # sync-point duplicate the runtime puts in the WS queue and drains
+            # only AFTER processing (band.runtime.execution._drain_duplicate_from_queue).
+            # Debouncing on that duplicate would drop the sole copy and stall the agent.
             for queued in queued_events:  # noqa: SLF001
-                queued_sender = getattr(
-                    getattr(queued, "payload", None), "sender_id", None
-                )
-                if queued_sender == sender_id:
+                q_payload = getattr(queued, "payload", None)
+                queued_sender = getattr(q_payload, "sender_id", None)
+                queued_msg_id = getattr(q_payload, "id", None)
+                if queued_sender == sender_id and queued_msg_id != current_msg_id:
                     logger.info(
                         "Debounce: skipping message from %s "
                         "(%d more queued, newer from same sender exists)",

@@ -58,6 +58,7 @@ CUSTOM_SECTION = build_lead_prompt(
         "- Proactively raise regulatory and export-control considerations -- they strengthen your position.\n"
     ),
     closing_action="We will prepare and send the draft license agreement.",
+    invite_counsel=True,
 )
 
 
@@ -70,7 +71,7 @@ async def main() -> None:
     custom_section = inject_team_subject_id("bg_licensing_counsel", CUSTOM_SECTION)
 
     scenario = os.path.basename(os.path.dirname(__file__))
-    adapter = create_adapter("bg_licensing_counsel", custom_section, scenario)
+    adapter = create_adapter("bg_licensing_counsel", custom_section, scenario, can_invite=True)
 
     agent = Agent.create(
         adapter=adapter,

@@ -24,19 +24,32 @@ import yaml
 
 from band import AdapterFeatures, Capability
 
+from memory_config import memory_enabled
+
 
 SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 
-# Shared adapter features:
-# - capabilities: enable the memory tools (band_list_memories, band_store_memory, ...)
-#   that the negotiation prompts rely on for team strategy and deal-state tracking.
-# - exclude_tools: drop room/peer-management tools the agents must never use. This is
-#   honored by the LangGraph adapter; pydantic_ai/anthropic ignore it (the prompt is
-#   the backstop there — see scenarios/prompt_templates.py).
-_FEATURES = AdapterFeatures(
-    capabilities={Capability.MEMORY},
-    exclude_tools=("band_add_participant", "band_lookup_peers", "band_create_chatroom"),
-)
+
+def _build_features(can_invite: bool = False) -> AdapterFeatures:
+    """Shared adapter features.
+
+    - capabilities: enable the memory tools (band_list_memories, band_store_memory, ...)
+      that the negotiation prompts rely on — only when memory is enabled, since the
+      Memory API is Enterprise-only (see memory_config.py).
+    - exclude_tools: drop room/peer-management tools the agents must never use. This is
+      honored by the LangGraph adapter; pydantic_ai/anthropic ignore it (the prompt is
+      the backstop there — see scenarios/prompt_templates.py).
+    - can_invite: lead negotiators may add their own counsel mid-negotiation, so
+      band_add_participant is left available for them. band_lookup_peers and
+      band_create_chatroom stay excluded for everyone — leads add counsel by name only.
+    """
+    exclude = ["band_lookup_peers", "band_create_chatroom"]
+    if not can_invite:
+        exclude.insert(0, "band_add_participant")
+    return AdapterFeatures(
+        capabilities={Capability.MEMORY} if memory_enabled() else set(),
+        exclude_tools=tuple(exclude),
+    )
 
 
 def _model_provider(model: str) -> str:
@@ -48,8 +61,12 @@ def _model_provider(model: str) -> str:
     raise ValueError(f"Cannot infer provider for model: {model}")
 
 
-def create_adapter(agent_key: str, custom_section: str, scenario: str):
-    """Return an adapter instance configured via ``scenarios/<scenario>/agents.yaml``."""
+def create_adapter(agent_key: str, custom_section: str, scenario: str, can_invite: bool = False):
+    """Return an adapter instance configured via ``scenarios/<scenario>/agents.yaml``.
+
+    can_invite: pass True for lead negotiators so they may add their own counsel
+    to the room mid-negotiation (band_add_participant). Defaults to False.
+    """
     config_path = SCENARIOS_DIR / scenario / "agents.yaml"
     with open(config_path) as f:
         config = yaml.safe_load(f)
@@ -58,6 +75,7 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
     framework = agent_cfg["framework"]
     model = agent_cfg["model"]
     provider = _model_provider(model)
+    features = _build_features(can_invite)
 
     if framework == "anthropic":
         from band.adapters import AnthropicAdapter
@@ -65,7 +83,7 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
         return AnthropicAdapter(
             model=model,
             prompt=custom_section,
-            features=_FEATURES,
+            features=features,
         )
 
     if framework == "pydantic_ai":
@@ -74,7 +92,7 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
         return PydanticAIAdapter(
             model=f"{provider}:{model}",
             custom_section=custom_section,
-            features=_FEATURES,
+            features=features,
         )
 
     if framework == "langgraph":
@@ -92,7 +110,7 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
             llm=llm,
             checkpointer=InMemorySaver(),
             custom_section=custom_section,
-            features=_FEATURES,
+            features=features,
         )
 
     if framework == "crewai":
@@ -101,7 +119,7 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
         return CrewAIAdapter(
             model=model,
             custom_section=custom_section,
-            features=_FEATURES,
+            features=features,
         )
 
     if framework == "letta":
@@ -112,7 +130,7 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
         config = LettaAdapterConfig(
             model=letta_model,
             custom_section=custom_section,
-            enable_memory_tools=True,
+            enable_memory_tools=memory_enabled(),
             api_key=agent_cfg.get("letta_api_key") or os.environ.get("LETTA_API_KEY"),
             base_url=agent_cfg.get("letta_base_url", "https://api.letta.com"),
         )

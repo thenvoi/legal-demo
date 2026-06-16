@@ -3,6 +3,8 @@
 A multi-agent demo where **5 AI legal agents**, built on **3 different frameworks**,
 negotiate a patent-licensing agreement through the Thenvoi platform.
 
+Prepared for the Stanford LLM × Law hackathon (2026).
+
 ## Scenario
 
 **TechVentures Inc.** (buyer) wants to license **BioGen Therapeutics'** diagnostic-biomarker
@@ -67,7 +69,7 @@ cp .env.example .env
 ```
 
 You need:
-- `THENVOI_API_KEY_USER` -- a User API key from platform.thenvoi.com (account settings)
+- `BAND_API_KEY_USER` -- a User API key from platform.thenvoi.com (account settings)
 - `OPENAI_API_KEY` -- for LangGraph and CrewAI agents (GPT-4o)
 - `ANTHROPIC_API_KEY` -- for the BioGen Licensing Counsel agent (Claude)
 
