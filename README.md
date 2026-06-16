@@ -1,170 +1,138 @@
-# Legal Demo: Cross-Firm Patent Licensing Negotiation
+# Legal Demo: Multi-Agent Negotiation
 
-A multi-agent demo where **5 AI legal agents**, built on **3 different frameworks**,
-negotiate a patent-licensing agreement through the Thenvoi platform.
+A multi-agent negotiation demo where 4 AI agents, built on different frameworks,
+negotiate through the [Band](https://app.thenvoi.com) platform. Each scenario gives the
+agents their own personas, domain prompts, and starting positions; they argue, pull in
+their counsel, and work toward an agreement in a shared room.
 
 Prepared for the Stanford LLM × Law hackathon (2026).
 
-## Scenario
+## Scenarios
 
-**TechVentures Inc.** (buyer) wants to license **BioGen Therapeutics'** diagnostic-biomarker
-patent portfolio for use in a new AI-powered diagnostic platform. Each company deploys
-its own AI legal team, and a neutral mediator facilitates.
+Two scenarios ship with the demo. `series_a` is the default.
 
-```
-TechVentures (Buyer)              BioGen (Seller)
- +-----------------------+         +-------------------------+
- | Contract Attorney     |  <--->  | Licensing Counsel       |
- | (LangGraph / GPT-4o)  |         | (Anthropic / Claude)    |
- +-----------------------+         +-------------------------+
- | IP Analyst            |         | Regulatory Advisor      |
- | (CrewAI / GPT-4o)     |         | (CrewAI / GPT-4o)       |
- +-----------------------+         +-------------------------+
+| Scenario | Parties | What they negotiate |
+|---|---|---|
+| `series_a` (default) | NovaTech (startup) vs. Apex Ventures (VC) | Series A valuation, investment amount, board composition |
+| `patent_licensing` | TechVentures (buyer) vs. BioGen Therapeutics (seller) | Patent-licensing royalty rate and license scope |
 
-                    Neutral Mediator
-                 (LangGraph / GPT-4o)
-```
+Each scenario has 4 agents: two lead negotiators (one per side) and two counsel/specialists.
+The leads drive the conversation; counsel only speak when their principal @mentions them.
+Everyone shares one room, so the opposing side sees everything — counsel use guarded
+language accordingly.
 
-## What This Demonstrates
-
-| Thenvoi Capability | How It Shows Up |
-|---|---|
-| **Cross-framework interop** | LangGraph, Anthropic SDK, and CrewAI agents collaborate seamlessly |
-| **Cross-organizational comms** | Agents from separate companies negotiate through shared rooms |
-| **Dynamic agent discovery** | Mediator uses `thenvoi_lookup_peers` to find and invite specialists |
-| **@mention routing** | Agents address each other by name; messages route through the platform |
-| **Specialist escalation** | Lead negotiators pull in IP/regulatory analysts when needed |
-| **Thought events** | Agents share internal strategy notes via `thenvoi_send_event` |
-
-## Agents
+### `series_a` agents (default)
 
 | Agent | Org | Framework | Role |
 |---|---|---|---|
-| Contract Attorney | TechVentures | LangGraph | Lead buyer negotiator -- broad license, low royalties |
-| IP Analyst | TechVentures | CrewAI | Patent scope analysis, prior-art leverage |
-| Licensing Counsel | BioGen | Anthropic | Lead seller negotiator -- protect IP, maximize revenue |
-| Regulatory Advisor | BioGen | CrewAI | Export controls, GDPR, FDA compliance |
-| Mediator | Neutral | LangGraph | Facilitates, proposes compromises, tracks agreed terms |
+| Startup CEO | NovaTech | LangGraph | Lead negotiator — maximize valuation, keep founder control |
+| Startup Lawyer | NovaTech | PydanticAI | Counsel on term-sheet provisions and governance |
+| VC Partner | Apex Ventures | LangGraph | Lead negotiator — target equity stake, investor protections |
+| VC Lawyer | Apex Ventures | PydanticAI | Counsel on deal structure and downside protection |
 
-## Negotiation Flow
+### `patent_licensing` agents
 
-1. **Human** creates a room on the Thenvoi platform and invites the Mediator.
-2. **Mediator** sets ground rules, uses `thenvoi_lookup_peers` to discover the
-   negotiating agents, and invites them via `thenvoi_add_participant`.
-3. **TechVentures Attorney** opens with their position (broad license, 4% royalty cap).
-4. **BioGen Counsel** counters (limited scope, 7% royalty, audit rights).
-5. **TV Attorney** @mentions the **IP Analyst** to assess patent-scope risks.
-6. **BioGen Counsel** @mentions the **Regulatory Advisor** on export-control clauses.
-7. Specialists provide analysis; lead negotiators adjust positions.
-8. **Mediator** proposes compromise terms when parties stall.
-9. Process continues until a **Term Sheet** is produced.
+| Agent | Org | Framework | Role |
+|---|---|---|---|
+| Contract Attorney | TechVentures | LangGraph | Lead buyer negotiator — broad license, low royalties |
+| IP Analyst | TechVentures | PydanticAI | Patent-scope analysis, prior-art leverage |
+| Licensing Counsel | BioGen | PydanticAI | Lead seller negotiator — protect IP, maximize revenue |
+| Regulatory Advisor | BioGen | PydanticAI | FDA / EAR / GDPR compliance |
+
+Framework and model are configured per agent in `scenarios/<scenario>/agents.yaml`.
+`series_a` agents run on Claude (Anthropic); `patent_licensing` agents run on GPT.
+The adapter factory (`adapter_factory.py`) also supports the Anthropic SDK, CrewAI,
+Letta, and Parlant adapters if you want to swap a framework.
+
+## What This Demonstrates
+
+| Band capability | How it shows up |
+|---|---|
+| **Cross-framework interop** | LangGraph and PydanticAI agents collaborate in one room |
+| **Cross-organizational comms** | Agents from opposing companies negotiate through a shared room |
+| **@mention routing** | Agents address each other by name; the platform routes and gates messages |
+| **Mention-filtered visibility** | Agents only see messages they're @mentioned in; counsel stay quiet until pulled in |
+| **Specialist escalation** | Leads add their own counsel mid-negotiation via `band_add_participant` |
+| **Thought events** | Agents share internal strategy notes via `band_send_event` |
+| **Long-term memory (optional)** | Team strategy seeded as org-scoped memories, gated behind `BAND_ENABLE_MEMORY` |
 
 ## Quick Start
 
-### 1. Configure Environment
+### 1. Configure environment
 
 ```bash
 cp .env.example .env
-# Edit .env with your platform URLs and API keys
+# Edit .env with your API keys
 ```
 
 You need:
-- `BAND_API_KEY_USER` -- a User API key from platform.thenvoi.com (account settings)
-- `OPENAI_API_KEY` -- for LangGraph and CrewAI agents (GPT-4o)
-- `ANTHROPIC_API_KEY` -- for the BioGen Licensing Counsel agent (Claude)
+- `BAND_API_KEY_USER` — a User API key from your Band account settings. Used by
+  `setup_agents.py` to register agents and by `kickoff.py` for room setup.
+- `ANTHROPIC_API_KEY` — for the `series_a` agents (Claude).
+- `OPENAI_API_KEY` — for the `patent_licensing` agents (GPT).
 
-### 2. Install Dependencies
+Optional:
+- `BAND_API_KEY_USER_STARTUP` / `BAND_API_KEY_USER_VC` — per-team User API keys. When
+  set, each team's agents register under its own account so team-strategy memories stay
+  isolated. Both fall back to `BAND_API_KEY_USER` when unset.
+- `BAND_ENABLE_MEMORY=1` — enable the platform Memory API (Enterprise plan only).
+  When unset, the demo runs without memory: no team-strategy seeding, no memory tools.
+
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Create Agents on the Platform
-
-**Option A: Automated (recommended)**
+### 3. Register agents on the platform
 
 ```bash
-python setup_agents.py
+python setup_agents.py                                # series_a (default)
+python setup_agents.py --scenario patent_licensing    # patent_licensing
 ```
 
-This registers all 5 agents on the platform and writes their credentials to
-`agent_config.yaml`. To tear them down later: `python setup_agents.py --delete`.
+This deletes the scenario's existing agents, re-registers them, and writes their
+credentials to `agent_config.yaml`. Tear them down with `python setup_agents.py --delete`.
 
-**Option B: Manual (via the platform UI)**
-
-If you prefer to create agents through the web interface:
-
-1. Go to [platform.thenvoi.com](https://platform.thenvoi.com) and log in.
-2. For each of the 5 agents below, create a new **External** agent with the
-   specified name and description:
-
-   | Name | Description |
-   |---|---|
-   | TechVentures Contract Attorney | Lead negotiator AI agent for TechVentures (buyer) in patent licensing negotiations. |
-   | TechVentures IP Analyst | IP risk analysis AI agent for TechVentures, evaluates patent scope and prior art. |
-   | BioGen Licensing Counsel | Lead negotiator AI agent for BioGen Therapeutics (seller) in patent licensing negotiations. |
-   | BioGen Regulatory Advisor | Regulatory compliance AI agent for BioGen, handles FDA/EAR/GDPR issues. |
-   | Mediator | Neutral mediator AI agent facilitating patent licensing negotiations. |
-
-3. While creating each agent, copy its **Agent ID** and **API key**.
-4. Copy the example config and fill in the credentials:
-   ```bash
-   cp agent_config.yaml.example agent_config.yaml
-   ```
-5. Open `agent_config.yaml` and paste each agent's `agent_id` and `api_key`
-   under the matching config key:
-
-   | Agent Name | Config Key |
-   |---|---|
-   | TechVentures Contract Attorney | `tv_contract_attorney` |
-   | TechVentures IP Analyst | `tv_ip_analyst` |
-   | BioGen Licensing Counsel | `bg_licensing_counsel` |
-   | BioGen Regulatory Advisor | `bg_regulatory_advisor` |
-   | Mediator | `mediator` |
-
-### 4. Start All Agents
+### 4. Start the agents
 
 ```bash
-python run_all.py
+python run_all.py                                     # series_a (default)
+python run_all.py --scenario patent_licensing         # patent_licensing
+python run_all.py --scenario series_a vc_*            # launch a subset (glob patterns)
 ```
 
-Or start specific agents:
-```bash
-python run_all.py mediator tv_*        # mediator + TechVentures agents
-python agents/bg_licensing_counsel.py  # single agent
-```
+Press Ctrl+C to shut all of them down.
 
-### 5. Kick Off the Negotiation
+### 5. Kick off the negotiation
 
-In a separate terminal:
+In a separate terminal, once the agents are running:
 
 ```bash
-python kickoff.py
+python kickoff.py                                     # series_a (default)
+python kickoff.py --scenario patent_licensing         # patent_licensing
+python kickoff.py --no-clean                          # skip deactivating old rooms
+python kickoff.py --message "Custom kickoff..."       # custom kickoff message
 ```
 
-This creates three chat rooms on the platform:
-1. **Main negotiation room** -- Mediator + both lead negotiators
-2. **TechVentures caucus room** -- TV Attorney + IP Analyst (private)
-3. **BioGen caucus room** -- BG Counsel + Regulatory Advisor (private)
+`kickoff.py` creates a single negotiation room, adds the two lead negotiators, and sends
+the opening message from the side that starts. By default it first cleans up old rooms
+(removes participants — the API has no delete-room endpoint); use `--no-clean` to skip.
 
-Briefing messages are sent to the caucus rooms so specialists can prepare,
-then a kickoff message listing the 7 key terms is sent to the main room.
-
-Options:
-```bash
-python kickoff.py --clean                # leave/deactivate old rooms first
-python kickoff.py --message "Custom..."  # custom kickoff message
-```
-
-Use `--clean` when re-running to avoid agents accumulating stale rooms.
-
-Watch the negotiation unfold in the Thenvoi platform UI.
+Watch the negotiation unfold in the Band platform UI.
 
 ## Architecture Notes
 
-- Each agent is a standalone Python process connected to Thenvoi via WebSocket.
-- Agents discover each other dynamically through `thenvoi_lookup_peers` -- no
-  hardcoded agent IDs in the negotiation logic.
-- Framework choice is per-agent: swap any agent's framework without affecting others.
-- The platform handles message routing, room management, and presence -- agents
-  just process messages and call tools.
+- Each agent is a standalone Python process connected to Band over a WebSocket.
+  `run_all.py` spawns one `multiprocessing.Process` per agent.
+- Agent behavior is driven entirely by system-prompt strings (`CUSTOM_SECTION` in each
+  agent module, assembled from `scenarios/prompt_templates.py`) — not hardcoded logic.
+- Adapters are built by `adapter_factory.py` from each scenario's `agents.yaml`, so you
+  can change an agent's framework or model without touching the negotiation logic.
+- Room/peer-management tools (`band_lookup_peers`, `band_create_chatroom`) are excluded
+  from every agent; lead negotiators keep `band_add_participant` so they can pull in
+  their counsel by name.
+- The platform handles message routing, room management, mention-gated visibility, and
+  presence — agents just process messages and call tools.
+
+See [`CLAUDE.md`](CLAUDE.md) for the full scenario layout and the Band platform reference.
