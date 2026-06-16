@@ -2,7 +2,7 @@
 Create demo agents on the Thenvoi platform and write per-scenario credentials.
 
 Requires a User API key (not an agent key). Get one from platform.thenvoi.com
-under your account settings, then put it in ``.env`` as ``THENVOI_API_KEY_USER``.
+under your account settings, then put it in ``.env`` as ``BAND_API_KEY_USER``.
 
 Usage:
     python setup_agents.py                             # series_a (default)
@@ -23,7 +23,6 @@ import asyncio
 import importlib
 import logging
 import os
-import sys
 
 import yaml
 from dotenv import load_dotenv
@@ -206,21 +205,24 @@ async def delete_agents(scenario: str, agent_names: set[str] | None = None) -> N
 async def main() -> None:
     load_dotenv()
 
-    # Parse scenario
-    scenario = DEFAULT_SCENARIO
-    for i, arg in enumerate(sys.argv[1:], 1):
-        if arg == "--scenario" and i < len(sys.argv) - 1:
-            scenario = sys.argv[i + 1]
+    parser = argparse.ArgumentParser(description="Register (or delete) demo agents")
+    parser.add_argument(
+        "--scenario", default=DEFAULT_SCENARIO,
+        help=f"Scenario to set up (default: {DEFAULT_SCENARIO})",
+    )
+    parser.add_argument(
+        "--delete", action="store_true",
+        help="Tear down the agents for the given scenario",
+    )
+    args = parser.parse_args()
+    scenario = args.scenario
 
-    if "--delete" in sys.argv:
-        scenario_mod = importlib.import_module(f"scenarios.{scenario}.scenario")
-        names = {a["name"] for a in scenario_mod.AGENTS}
-        await delete_agents(scenario, agent_names=names)
-        return
-
-    # Load scenario to know which agent names to clean up
     scenario_mod = importlib.import_module(f"scenarios.{scenario}.scenario")
     agent_names = {a["name"] for a in scenario_mod.AGENTS}
+
+    if args.delete:
+        await delete_agents(scenario, agent_names=agent_names)
+        return
 
     # Clean up only THIS scenario's agents before creating new ones
     logger.info("Cleaning up existing agents for scenario: %s", scenario)

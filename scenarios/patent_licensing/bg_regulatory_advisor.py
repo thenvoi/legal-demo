@@ -39,7 +39,7 @@ async def main() -> None:
     agent_id, api_key = load_credentials("bg_regulatory_advisor", scenario)
 
     from agent_config_ext import inject_team_subject_id
-    custom_section = inject_team_subject_id("bg_regulatory_advisor", CUSTOM_SECTION)
+    custom_section = inject_team_subject_id("bg_regulatory_advisor", CUSTOM_SECTION, scenario)
 
     adapter = create_adapter("bg_regulatory_advisor", custom_section, scenario)
 

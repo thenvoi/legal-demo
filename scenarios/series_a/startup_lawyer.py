@@ -39,7 +39,7 @@ async def main() -> None:
     agent_id, api_key = load_credentials("startup_lawyer", scenario)
 
     from agent_config_ext import inject_team_subject_id
-    custom_section = inject_team_subject_id("startup_lawyer", CUSTOM_SECTION)
+    custom_section = inject_team_subject_id("startup_lawyer", CUSTOM_SECTION, scenario)
 
     adapter = create_adapter("startup_lawyer", custom_section, scenario)
 

@@ -3,19 +3,13 @@
 # The defaults below mix langgraph and pydantic_ai on OpenAI models
 # (gpt-5.4-mini), which means you need OPENAI_API_KEY set in your .env.
 #
-# Don't have an OpenAI key? No problem. You can run every agent on
-# something you already have. Swap any agent's `framework:` and `model:`
-# to one of these options and the rest of the demo keeps working:
+# Supported frameworks: anthropic, pydantic_ai, langgraph, crewai, letta,
+# parlant. Swap any agent's `framework:` and `model:` to one of these and the
+# rest of the demo keeps working:
 #
-#   # Codex CLI subscription (run `codex login` once, then no API key needed)
-#   framework: codex
-#   model: gpt-5.4-mini
-#   reasoning_effort: high
-#
-#   # Claude subscription via the Claude Agent SDK
-#   framework: claude_sdk
-#   model: claude-sonnet-4-5-20250929
-#   max_thinking_tokens: 16000
+#   # Claude models (set ANTHROPIC_API_KEY in your .env)
+#   framework: pydantic_ai
+#   model: claude-sonnet-4-6
 #
 #   # A local model through any OpenAI-compatible endpoint (Ollama, vLLM,
 #   # LM Studio, etc.). Set OPENAI_BASE_URL in your .env to the server URL,

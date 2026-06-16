@@ -40,7 +40,7 @@ async def main() -> None:
     agent_id, api_key = load_credentials("tv_ip_analyst", scenario)
 
     from agent_config_ext import inject_team_subject_id
-    custom_section = inject_team_subject_id("tv_ip_analyst", CUSTOM_SECTION)
+    custom_section = inject_team_subject_id("tv_ip_analyst", CUSTOM_SECTION, scenario)
 
     adapter = create_adapter("tv_ip_analyst", custom_section, scenario)
 

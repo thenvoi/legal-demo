@@ -64,7 +64,7 @@ async def main() -> None:
     agent_id, api_key = load_credentials("startup_ceo", scenario)
 
     from agent_config_ext import inject_team_subject_id
-    custom_section = inject_team_subject_id("startup_ceo", CUSTOM_SECTION)
+    custom_section = inject_team_subject_id("startup_ceo", CUSTOM_SECTION, scenario)
 
     adapter = create_adapter("startup_ceo", custom_section, scenario, can_invite=True)
 

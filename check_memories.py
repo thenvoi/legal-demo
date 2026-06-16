@@ -1,17 +1,28 @@
 """Quick diagnostic: list memories visible to each agent, verify team isolation."""
 from __future__ import annotations
 
+import argparse
 import asyncio
+
 import yaml
 from dotenv import load_dotenv
 from thenvoi_rest import AsyncRestClient
+
+from adapter_factory import credentials_path
 from platform_url import get_platform_url
 
 
 async def main() -> None:
     load_dotenv()
 
-    with open("agent_config.yaml") as f:
+    parser = argparse.ArgumentParser(description="List memories per agent for a scenario")
+    parser.add_argument(
+        "--scenario", default="series_a",
+        help="Scenario whose agent_config to inspect (default: series_a)",
+    )
+    args = parser.parse_args()
+
+    with open(credentials_path(args.scenario)) as f:
         config = yaml.safe_load(f)
 
     platform_url = get_platform_url()
