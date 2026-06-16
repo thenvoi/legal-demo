@@ -1,15 +1,15 @@
 startup_ceo:
-  framework: pydantic_ai
-  model: gpt-5.4
+  framework: langgraph
+  model: claude-sonnet-4-6
 
 startup_lawyer:
-  framework: langgraph
-  model: gpt-5.4
+  framework: pydantic_ai
+  model: claude-sonnet-4-6
 
 vc_partner:
   framework: langgraph
-  model: gpt-5.4
+  model: claude-sonnet-4-6
 
 vc_counsel:
-  framework: langgraph
-  model: gpt-5.4
+  framework: pydantic_ai
+  model: claude-sonnet-4-6

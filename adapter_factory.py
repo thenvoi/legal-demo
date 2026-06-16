@@ -51,6 +51,7 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
         return AnthropicAdapter(
             model=model,
             custom_section=custom_section,
+            enable_memory_tools=True,
         )
 
     if framework == "pydantic_ai":
@@ -59,6 +60,7 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
         return PydanticAIAdapter(
             model=f"{provider}:{model}",
             custom_section=custom_section,
+            enable_memory_tools=True,
         )
 
     if framework == "langgraph":
@@ -76,6 +78,41 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
             llm=llm,
             checkpointer=InMemorySaver(),
             custom_section=custom_section,
+            enable_memory_tools=True,
+        )
+
+    if framework == "crewai":
+        from thenvoi.adapters import CrewAIAdapter
+
+        return CrewAIAdapter(
+            model=model,
+            custom_section=custom_section,
+            enable_memory_tools=True,
+        )
+
+    if framework == "letta":
+        from thenvoi.adapters import LettaAdapter
+        from thenvoi.adapters.letta import LettaAdapterConfig
+
+        letta_model = f"{provider}/{model}"
+        config = LettaAdapterConfig(
+            model=letta_model,
+            custom_section=custom_section,
+            enable_memory_tools=True,
+            api_key=agent_cfg.get("letta_api_key") or os.environ.get("LETTA_API_KEY"),
+            base_url=agent_cfg.get("letta_base_url", "https://api.letta.com"),
+        )
+        return LettaAdapter(config=config)
+
+    if framework == "parlant":
+        raise ValueError(
+            "Parlant requires async setup (Server is an async context manager). "
+            "Create the adapter directly in the agent module:\n"
+            "  import parlant.sdk as p\n"
+            "  async with p.Server() as server:\n"
+            "      agent = await server.create_agent(name=..., description=...)\n"
+            "      adapter = ParlantAdapter(server=server, parlant_agent=agent, "
+            "custom_section=...)"
         )
 
     raise ValueError(f"Unknown framework: {framework}")

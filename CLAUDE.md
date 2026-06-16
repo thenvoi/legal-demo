@@ -50,7 +50,7 @@ scenarios/
     startup_ceo.py
     startup_lawyer.py
     vc_partner.py
-    vc_legal_counsel.py
+    vc_lawyer.py
 ```
 
 Each `scenario.py` exports:

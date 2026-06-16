@@ -19,7 +19,7 @@ from thenvoi.config import load_agent_config
 from adapter_factory import create_adapter
 from platform_url import get_platform_url, get_ws_url
 from scenarios.prompt_templates import build_lead_prompt
-from self_aware_preprocessor import SelfAwarePreprocessor
+from self_aware_preprocessor import DebouncePreprocessor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 logger = logging.getLogger("bg_licensing_counsel")
@@ -57,6 +57,7 @@ CUSTOM_SECTION = build_lead_prompt(
         "## ADDITIONAL GUIDANCE\n"
         "- Proactively raise regulatory and export-control considerations -- they strengthen your position.\n"
     ),
+    closing_action="We will prepare and send the draft license agreement.",
 )
 
 
@@ -67,8 +68,11 @@ async def main() -> None:
 
     agent_id, api_key = load_agent_config("bg_licensing_counsel")
 
+    from agent_config_ext import inject_team_subject_id
+    custom_section = inject_team_subject_id("bg_licensing_counsel", CUSTOM_SECTION)
+
     scenario = os.path.basename(os.path.dirname(__file__))
-    adapter = create_adapter("bg_licensing_counsel", CUSTOM_SECTION, scenario)
+    adapter = create_adapter("bg_licensing_counsel", custom_section, scenario)
 
     agent = Agent.create(
         adapter=adapter,
@@ -76,7 +80,7 @@ async def main() -> None:
         api_key=api_key,
         ws_url=get_ws_url(),
         rest_url=get_platform_url(),
-        preprocessor=SelfAwarePreprocessor(),
+        preprocessor=DebouncePreprocessor(),
     )
 
     logger.info("BioGen Licensing Counsel agent is online.")

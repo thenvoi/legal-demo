@@ -1,9 +1,8 @@
 """
-TechVentures IP Analyst.
+Apex Ventures VC Lawyer.
 
-Specialist who evaluates patent scope, freedom-to-operate risks, and prior-art
-issues. Called upon by TechVentures' attorney when IP-related clauses are
-under discussion.
+Legal counsel advising the VC Partner on deal structuring, investor protections,
+and standard market terms during Series A negotiations.
 Framework and model configured via agents.yaml.
 """
 from __future__ import annotations
@@ -23,13 +22,13 @@ from scenarios.prompt_templates import build_specialist_prompt
 from self_aware_preprocessor import DebouncePreprocessor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
-logger = logging.getLogger("tv_ip_analyst")
+logger = logging.getLogger("vc_lawyer")
 
 CUSTOM_SECTION = build_specialist_prompt(
-    identity='You ARE "TechVentures IP Analyst" — an IP advisor to TechVentures\' Contract Attorney.',
-    goal="Give brief, direct IP risk assessments when asked. Flag patent scope issues.",
-    instructions="Answer your principal's questions concisely. Do not write full patent analyses.",
-    principal="TechVentures Contract Attorney",
+    identity='You ARE "VC Lawyer" — a legal advisor to the VC Partner.',
+    goal="Give brief, direct legal assessments when asked. Flag risks, recommend positions.",
+    instructions="Answer your principal's questions concisely. Do not write legal memoranda.",
+    principal="VC Partner",
     topics="",
 )
 
@@ -39,13 +38,13 @@ async def main() -> None:
     from tool_filter import remove_tools
     remove_tools("thenvoi_add_participant", "thenvoi_lookup_peers", "thenvoi_create_chatroom")
 
-    agent_id, api_key = load_agent_config("tv_ip_analyst")
+    agent_id, api_key = load_agent_config("vc_counsel")
 
     from agent_config_ext import inject_team_subject_id
-    custom_section = inject_team_subject_id("tv_ip_analyst", CUSTOM_SECTION)
+    custom_section = inject_team_subject_id("vc_counsel", CUSTOM_SECTION)
 
     scenario = os.path.basename(os.path.dirname(__file__))
-    adapter = create_adapter("tv_ip_analyst", custom_section, scenario)
+    adapter = create_adapter("vc_counsel", custom_section, scenario)
 
     agent = Agent.create(
         adapter=adapter,
@@ -53,10 +52,10 @@ async def main() -> None:
         api_key=api_key,
         ws_url=get_ws_url(),
         rest_url=get_platform_url(),
-        preprocessor=DebouncePreprocessor(principal_name="TechVentures Contract Attorney"),
+        preprocessor=DebouncePreprocessor(principal_name="VC Partner"),
     )
 
-    logger.info("TechVentures IP Analyst agent is online.")
+    logger.info("VC Lawyer agent is online.")
     await agent.run()
 
 
