@@ -56,7 +56,7 @@ Letta, and Parlant adapters if you want to swap a framework.
 | **Thought events** | Agents share internal strategy notes via `band_send_event` |
 | **Long-term memory (optional)** | Team strategy seeded as org-scoped memories, gated behind `BAND_ENABLE_MEMORY` |
 
-## Quick Start
+**NovaTech** (AI-powered drug discovery, $1.2M ARR) is raising a $5M Series A from **Apex Ventures**. Both sides have walk-away lines. Counsel only speaks when @mentioned by their principal.
 
 ### 1. Configure environment
 
@@ -81,7 +81,8 @@ Optional:
 ### 2. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+cp agent_config.series_a.yaml.example agent_config.series_a.yaml
+# Paste agent_id and api_key for each agent
 ```
 
 ### 3. Register agents on the platform
@@ -121,7 +122,7 @@ the opening message from the side that starts. By default it first cleans up old
 
 Watch the negotiation unfold in the Band platform UI.
 
-## Architecture Notes
+---
 
 - Each agent is a standalone Python process connected to Band over a WebSocket.
   `run_all.py` spawns one `multiprocessing.Process` per agent.

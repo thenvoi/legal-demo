@@ -13,10 +13,14 @@ import os
 
 from dotenv import load_dotenv
 
+<<<<<<< HEAD
 from band import Agent
 from band.config import load_agent_config
+=======
+from thenvoi import Agent
+>>>>>>> main
 
-from adapter_factory import create_adapter
+from adapter_factory import create_adapter, load_credentials
 from platform_url import get_platform_url, get_ws_url
 from scenarios.prompt_templates import build_specialist_prompt
 from self_aware_preprocessor import DebouncePreprocessor
@@ -36,6 +40,7 @@ CUSTOM_SECTION = build_specialist_prompt(
 async def main() -> None:
     load_dotenv()
 
+<<<<<<< HEAD
     agent_id, api_key = load_agent_config("startup_lawyer")
 
     from agent_config_ext import inject_team_subject_id
@@ -43,6 +48,11 @@ async def main() -> None:
 
     scenario = os.path.basename(os.path.dirname(__file__))
     adapter = create_adapter("startup_lawyer", custom_section, scenario)
+=======
+    scenario = os.path.basename(os.path.dirname(__file__))
+    agent_id, api_key = load_credentials("startup_lawyer", scenario)
+    adapter = create_adapter("startup_lawyer", CUSTOM_SECTION, scenario)
+>>>>>>> main
 
     agent = Agent.create(
         adapter=adapter,

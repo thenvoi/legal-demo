@@ -1,0 +1,21 @@
+# Patent licensing scenario — copy to agent_config.patent_licensing.yaml
+# and fill in the agent_id and api_key you get from app.thenvoi.com
+# after creating each agent as "External". The keys below MUST match
+# the config_keys in scenarios/patent_licensing/scenario.py — do not
+# rename them.
+
+tv_contract_attorney:
+  agent_id: ""
+  api_key: ""
+
+tv_ip_analyst:
+  agent_id: ""
+  api_key: ""
+
+bg_licensing_counsel:
+  agent_id: ""
+  api_key: ""
+
+bg_regulatory_advisor:
+  agent_id: ""
+  api_key: ""

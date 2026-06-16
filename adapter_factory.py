@@ -4,8 +4,9 @@ Build the correct adapter for an agent based on the scenario's agents.yaml.
 Each scenario directory contains an ``agents.yaml`` like::
 
     startup_ceo:
-      framework: anthropic
-      model: claude-sonnet-4-6-20250514
+      framework: codex
+      model: gpt-5.4-mini
+      reasoning_effort: high
 
     vc_partner:
       framework: langgraph
@@ -27,7 +28,30 @@ from band import AdapterFeatures, Capability
 from memory_config import memory_enabled
 
 
-SCENARIOS_DIR = Path(__file__).parent / "scenarios"
+ROOT_DIR = Path(__file__).resolve().parent
+SCENARIOS_DIR = ROOT_DIR / "scenarios"
+
+
+def credentials_path(scenario: str) -> Path:
+    """Return the path to ``agent_config.<scenario>.yaml`` at the repo root."""
+    return ROOT_DIR / f"agent_config.{scenario}.yaml"
+
+
+def agent_ids_path(scenario: str) -> Path:
+    """Return the path to ``.agent_ids.<scenario>.txt`` at the repo root."""
+    return ROOT_DIR / f".agent_ids.{scenario}.txt"
+
+
+def load_credentials(agent_key: str, scenario: str) -> tuple[str, str]:
+    """Load ``(agent_id, api_key)`` for ``agent_key`` from the scenario's
+    credentials file.
+
+    Each scenario has its own ``agent_config.<scenario>.yaml`` so scenarios
+    can be registered, run, and torn down independently of each other.
+    """
+    from thenvoi.config import load_agent_config
+
+    return load_agent_config(agent_key, config_path=credentials_path(scenario))
 
 
 def _build_features(can_invite: bool = False) -> AdapterFeatures:
@@ -58,14 +82,27 @@ def _model_provider(model: str) -> str:
         return "anthropic"
     if model.startswith("gpt") or model.startswith("o"):
         return "openai"
+    if model.startswith("gemini"):
+        return "google"
     raise ValueError(f"Cannot infer provider for model: {model}")
 
 
-def create_adapter(agent_key: str, custom_section: str, scenario: str, can_invite: bool = False):
+def create_adapter(
+    agent_key: str,
+    custom_section: str,
+    scenario: str,
+    *,
+    additional_tools: list | None = None,
+):
     """Return an adapter instance configured via ``scenarios/<scenario>/agents.yaml``.
 
-    can_invite: pass True for lead negotiators so they may add their own counsel
-    to the room mid-negotiation (band_add_participant). Defaults to False.
+    ``additional_tools`` is forwarded straight into the chosen adapter's
+    ``additional_tools`` kwarg. For codex / claude_sdk / anthropic / gemini /
+    google_adk the expected format is a list of ``CustomToolDef`` tuples —
+    ``(InputModel, callable)`` — which is the portable Thenvoi SDK shape. The
+    pydantic_ai and langgraph adapters take framework-native formats (bare
+    callables and LangChain tool objects respectively); pass those directly
+    if you're on those adapters.
     """
     config_path = SCENARIOS_DIR / scenario / "agents.yaml"
     with open(config_path) as f:

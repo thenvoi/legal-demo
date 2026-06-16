@@ -5,8 +5,8 @@ Creates rooms based on the scenario's topology, adds participants, and sends
 briefing/kickoff messages.
 
 Usage:
-    python kickoff.py                                  # patent_licensing (default)
-    python kickoff.py --scenario series_a              # Series A negotiation
+    python kickoff.py                                  # series_a (default)
+    python kickoff.py --scenario patent_licensing      # patent licensing
     python kickoff.py --no-clean                       # skip leaving old rooms
     python kickoff.py --message "Custom..."            # custom main-room message
 """
@@ -55,11 +55,15 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
-    if not os.path.exists("agent_config.yaml"):
-        logger.error("agent_config.yaml not found. Run setup_agents.py first.")
+    config_file = credentials_path(args.scenario)
+    if not config_file.exists():
+        logger.error(
+            "%s not found. Run 'python setup_agents.py --scenario %s' first.",
+            config_file.name, args.scenario,
+        )
         raise SystemExit(1)
 
-    with open("agent_config.yaml") as f:
+    with open(config_file) as f:
         config = yaml.safe_load(f)
 
     # Load scenario

@@ -1,18 +1,24 @@
 """
-Create demo agents on the Thenvoi platform and write agent_config.yaml.
+Create demo agents on the Thenvoi platform and write per-scenario credentials.
 
 Requires a User API key (not an agent key). Get one from platform.thenvoi.com
-under your account settings.
+under your account settings, then put it in ``.env`` as ``THENVOI_API_KEY_USER``.
 
 Usage:
     python setup_agents.py                             # series_a (default)
     python setup_agents.py --scenario series_a         # Series A agents
 
-To tear down:
-    python setup_agents.py --delete
+To tear down a scenario:
+    python setup_agents.py --delete                    # series_a
+    python setup_agents.py --delete --scenario patent_licensing
+
+Scenarios are isolated: each writes to ``agent_config.<scenario>.yaml`` and
+``.agent_ids.<scenario>.txt``, so registering one scenario never disturbs
+another.
 """
 from __future__ import annotations
 
+import argparse
 import asyncio
 import importlib
 import logging
@@ -29,8 +35,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger(__name__)
 
 DEFAULT_SCENARIO = "series_a"
-AGENT_IDS_FILE = ".agent_ids.txt"
-CONFIG_FILE = "agent_config.yaml"
 
 # Maps team names to env var names for per-team User API keys.
 TEAM_KEY_ENV_VARS = {
@@ -114,12 +118,12 @@ async def create_agents(agents: list[dict], team_memories: dict | None = None) -
 
     with open(CONFIG_FILE, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
-    logger.info("Credentials written to %s", CONFIG_FILE)
+    logger.info("Credentials written to %s", config_file.name)
 
-    with open(AGENT_IDS_FILE, "w") as f:
+    with open(ids_file, "w") as f:
         for aid in agent_ids:
             f.write(f"{aid}\n")
-    logger.info("Agent IDs saved to %s for cleanup", AGENT_IDS_FILE)
+    logger.info("Agent IDs saved to %s for cleanup", ids_file.name)
 
     # Seed team memories (subject-scoped to lead agent for team isolation)
     if team_memories:

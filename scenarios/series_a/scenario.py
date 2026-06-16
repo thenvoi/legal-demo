@@ -21,8 +21,13 @@ AGENTS = [
         "team": "vc",
     },
     {
+<<<<<<< HEAD
         "config_key": "vc_counsel",
         "name": "VC Lawyer",
+=======
+        "config_key": "vc_legal_counsel",
+        "name": "VC Legal Counsel",
+>>>>>>> main
         "description": "Legal counsel AI agent for Apex Ventures, advises on deal structure and investor protections.",
         "team": "vc",
     },
@@ -62,7 +67,11 @@ def get_kickoff_config(agent_ids: dict, agent_names: dict) -> dict:
             {
                 "name": "negotiation",
                 "owner": "startup_ceo",
+<<<<<<< HEAD
                 "participants": ["vc_partner"],
+=======
+                "participants": ["startup_lawyer", "vc_partner", "vc_legal_counsel"],
+>>>>>>> main
                 "message": (
                     "Thank you for taking this meeting. NovaTech is raising "
                     "a $5M Series A. We're an AI-powered drug-discovery platform with "
