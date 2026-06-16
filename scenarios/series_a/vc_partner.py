@@ -12,12 +12,12 @@ import os
 
 from dotenv import load_dotenv
 
-from thenvoi import Agent
+from band import Agent
 
 from adapter_factory import create_adapter, load_credentials
 from platform_url import get_platform_url, get_ws_url
 from scenarios.prompt_templates import build_lead_prompt
-from self_aware_preprocessor import SelfAwarePreprocessor
+from self_aware_preprocessor import DebouncePreprocessor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 logger = logging.getLogger("vc_partner")
@@ -41,7 +41,7 @@ CUSTOM_SECTION = build_lead_prompt(
         "- Always respond with a **concrete counter-offer**, not open-ended questions.\n"
         "- Aim to close each topic in **1-2 exchanges**."
     ),
-    counsel_name="VC Legal Counsel",
+    counsel_name="VC Lawyer",
     opposing_lead="Startup CEO",
     opposing_specialist="Startup Lawyer",
     counsel_reference="our legal counsel's assessment",
@@ -50,17 +50,21 @@ CUSTOM_SECTION = build_lead_prompt(
         "- You may accept 2 VC + 2 founder + 1 independent board (balanced)."
     ),
     topics="",
+    closing_action="We will prepare and send the term sheet.",
+    invite_counsel=True,
 )
 
 
 async def main() -> None:
     load_dotenv()
-    from tool_filter import remove_tools
-    remove_tools("thenvoi_add_participant", "thenvoi_lookup_peers", "thenvoi_create_chatroom")
 
     scenario = os.path.basename(os.path.dirname(__file__))
     agent_id, api_key = load_credentials("vc_partner", scenario)
-    adapter = create_adapter("vc_partner", CUSTOM_SECTION, scenario)
+
+    from agent_config_ext import inject_team_subject_id
+    custom_section = inject_team_subject_id("vc_partner", CUSTOM_SECTION, scenario)
+
+    adapter = create_adapter("vc_partner", custom_section, scenario, can_invite=True)
 
     agent = Agent.create(
         adapter=adapter,
@@ -68,7 +72,7 @@ async def main() -> None:
         api_key=api_key,
         ws_url=get_ws_url(),
         rest_url=get_platform_url(),
-        preprocessor=SelfAwarePreprocessor(),
+        preprocessor=DebouncePreprocessor(),
     )
 
     logger.info("VC Partner agent is online.")

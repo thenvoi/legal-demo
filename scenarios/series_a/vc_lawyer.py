@@ -1,8 +1,8 @@
 """
-BioGen Regulatory Advisor.
+Apex Ventures VC Lawyer.
 
-Specialist in biotech regulatory compliance, export controls, and data-privacy
-requirements. Called upon when regulatory clauses or cross-border issues arise.
+Legal counsel advising the VC Partner on deal structuring, investor protections,
+and standard market terms during Series A negotiations.
 Framework and model configured via agents.yaml.
 """
 from __future__ import annotations
@@ -21,13 +21,13 @@ from scenarios.prompt_templates import build_specialist_prompt
 from self_aware_preprocessor import DebouncePreprocessor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
-logger = logging.getLogger("bg_regulatory_advisor")
+logger = logging.getLogger("vc_lawyer")
 
 CUSTOM_SECTION = build_specialist_prompt(
-    identity='You ARE "BioGen Regulatory Advisor" — a regulatory advisor to BioGen\'s Licensing Counsel.',
-    goal="Give brief, direct regulatory assessments when asked. Flag compliance requirements.",
-    instructions="Answer your principal's questions concisely. Do not write regulatory reports.",
-    principal="BioGen Licensing Counsel",
+    identity='You ARE "VC Lawyer" — a legal advisor to the VC Partner.',
+    goal="Give brief, direct legal assessments when asked. Flag risks, recommend positions.",
+    instructions="Answer your principal's questions concisely. Do not write legal memoranda.",
+    principal="VC Partner",
     topics="",
 )
 
@@ -36,12 +36,12 @@ async def main() -> None:
     load_dotenv()
 
     scenario = os.path.basename(os.path.dirname(__file__))
-    agent_id, api_key = load_credentials("bg_regulatory_advisor", scenario)
+    agent_id, api_key = load_credentials("vc_counsel", scenario)
 
     from agent_config_ext import inject_team_subject_id
-    custom_section = inject_team_subject_id("bg_regulatory_advisor", CUSTOM_SECTION, scenario)
+    custom_section = inject_team_subject_id("vc_counsel", CUSTOM_SECTION, scenario)
 
-    adapter = create_adapter("bg_regulatory_advisor", custom_section, scenario)
+    adapter = create_adapter("vc_counsel", custom_section, scenario)
 
     agent = Agent.create(
         adapter=adapter,
@@ -49,10 +49,10 @@ async def main() -> None:
         api_key=api_key,
         ws_url=get_ws_url(),
         rest_url=get_platform_url(),
-        preprocessor=DebouncePreprocessor(principal_name="BioGen Licensing Counsel"),
+        preprocessor=DebouncePreprocessor(principal_name="VC Partner"),
     )
 
-    logger.info("BioGen Regulatory Advisor agent is online.")
+    logger.info("VC Lawyer agent is online.")
     await agent.run()
 
 

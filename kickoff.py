@@ -25,6 +25,7 @@ from thenvoi_rest.human_api_chats import CreateMyChatRoomRequestChat
 from thenvoi_rest.types import ChatMessageRequestMentionsItem as Mention
 
 from adapter_factory import credentials_path
+from memory_config import memory_enabled
 from platform_url import get_platform_url
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -84,9 +85,9 @@ async def main() -> None:
         logger.info("%s: %s (%s)", key, name, aid)
 
     # ── Human API client (room owner for all rooms) ──────────────────────
-    user_api_key = os.environ.get("THENVOI_API_KEY_USER")
+    user_api_key = os.environ.get("BAND_API_KEY_USER")
     if not user_api_key:
-        logger.error("THENVOI_API_KEY_USER not set in environment")
+        logger.error("BAND_API_KEY_USER not set in environment")
         raise SystemExit(1)
     user_client = AsyncRestClient(api_key=user_api_key, base_url=get_platform_url())
 
@@ -107,7 +108,35 @@ async def main() -> None:
                         )
                     except Exception as e:
                         logger.warning("Could not remove %s from room %s: %s", p.id, room.id, e)
-        logger.info("Cleanup complete.")
+        logger.info("Room cleanup complete.")
+
+        # Clear all memories except long_term/guideline (team strategy seeded
+        # by setup_agents.py).  Subject-scoped memories are only visible when
+        # queried with scope+subject_id, so we must pass those from config.
+        # Skipped entirely when memory is disabled (Memory API is Enterprise-only).
+        for key in clients if memory_enabled() else []:
+            subject_id = config.get(key, {}).get("team_subject_id")
+            if not subject_id:
+                continue
+            client = clients[key]
+            try:
+                memories = await client.agent_api_memories.list_agent_memories(
+                    scope="subject", subject_id=subject_id, page_size=100,
+                )
+                if not memories.data:
+                    continue
+                archived = 0
+                for mem in memories.data:
+                    if getattr(mem, "system", None) == "long_term" and getattr(mem, "segment", None) == "guideline":
+                        continue  # preserve team strategy
+                    await client.agent_api_memories.archive_agent_memory(mem.id)
+                    archived += 1
+                if archived:
+                    logger.info("  Archived %d memories for %s", archived, key)
+            except Exception as e:
+                logger.warning("Could not clear memories for %s: %s", key, e)
+        if memory_enabled():
+            logger.info("Memory cleanup complete.")
 
     # ── Get kickoff config from scenario ────────────────────────────────
     kickoff_config = scenario_mod.get_kickoff_config(agent_ids, agent_names)
@@ -156,6 +185,21 @@ async def main() -> None:
             message=ChatMessageRequest(content=message, mentions=mentions),
         )
         logger.info("  Sent message to %s room", room_def["name"])
+
+        # Send optional briefing messages (e.g. counsel priming the lead)
+        for briefing in room_def.get("briefings", []):
+            sender_client = clients[briefing["sender"]]
+            briefing_mentions = [
+                Mention(id=agent_ids[k], name=agent_names[k])
+                for k in briefing["mentions"]
+            ]
+            await sender_client.agent_api_messages.create_agent_chat_message(
+                room_id,
+                message=ChatMessageRequest(
+                    content=briefing["message"], mentions=briefing_mentions,
+                ),
+            )
+            logger.info("  Sent briefing from %s", briefing["sender"])
 
     # ── Print room summary ──────────────────────────────────────────────
     print("\n" + "=" * 56)

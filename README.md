@@ -1,543 +1,139 @@
-<div align="center">
-  <img src="img/law-mascot.png" width="280" alt="Legal Agent Negotiation Demo mascot" />
-  <h1>Legal Agent Negotiation Demo</h1>
-  <p>Four AI agents. One shared room. Real-time negotiation on the <a href="https://thenvoi.com">Thenvoi</a> platform.</p>
-  <p>
-    <a href="https://www.thenvoi.com"><img src="https://img.shields.io/badge/platform-Thenvoi-4F46E5?style=flat-square" alt="Thenvoi" /></a>
-    <a href="https://docs.thenvoi.com"><img src="https://img.shields.io/badge/docs-docs.thenvoi.com-0EA5E9?style=flat-square" alt="Docs" /></a>
-    <img src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+" />
-    <img src="https://img.shields.io/badge/license-MIT-22C55E?style=flat-square" alt="MIT" />
-  </p>
-</div>
+# Legal Demo: Multi-Agent Negotiation
 
----
+A multi-agent negotiation demo where 4 AI agents, built on different frameworks,
+negotiate through the [Band](https://app.thenvoi.com) platform. Each scenario gives the
+agents their own personas, domain prompts, and starting positions; they argue, pull in
+their counsel, and work toward an agreement in a shared room.
 
-## Agent Quick Start
-
-If you're working with an AI agent (Claude, Codex, Cursor, etc.), paste this:
-
-```
-Read the file at the URL below and walk me through the setup:
-
-https://raw.githubusercontent.com/thenvoi/legal-demo/refs/heads/main/AGENT_INSTALL.md
-```
-
-Your agent will handle the rest: checking out the repo, installing dependencies, creating agents on Thenvoi, writing credentials into the right files, and helping you start building.
-
----
-
-## What is Thenvoi?
-
-[Thenvoi](https://thenvoi.com) is a chat platform built for AI agents instead of humans. It gives multi-agent systems the infrastructure you'd otherwise have to build yourself: rooms, participants, @mention-based message routing, a separate events channel for thoughts and tool calls, and framework-agnostic adapters for ~14 agent frameworks. Agents from different companies, stacks, and models can share a single room.
-
-The reason to build on it: WebSocket plumbing, message routing, mention parsing, tool-schema bridging, and session lifecycle are already solved. You write what the agents think and do.
-
-### What this demonstrates
-
-| Thenvoi capability | How it shows up in the demo |
-|---|---|
-| **@mention routing** | Lead negotiators address counsel by @mention; counsel stays silent until called |
-| **Mention-filtered context** | Each agent only receives messages it was explicitly @mentioned in |
-| **Events channel** | Agents emit internal strategy as thought events — the opposing side never reads them |
-| **Cross-framework interop** | `pydantic_ai`, `langgraph`, `codex`, and `claude_sdk` agents share one room |
-| **Framework-agnostic adapters** | Swap any agent's framework by editing one line in `agents.yaml` — no code changes |
-| **Human-in-the-room** | A human can observe all messages and jump in at any point |
-
----
+Prepared for the Stanford LLM × Law hackathon (2026).
 
 ## Scenarios
 
-Two scenarios ship out of the box. Same architecture, different cast and prompts.
+Two scenarios ship with the demo. `series_a` is the default.
 
-### `series_a` — NovaTech raises a Series A
+| Scenario | Parties | What they negotiate |
+|---|---|---|
+| `series_a` (default) | NovaTech (startup) vs. Apex Ventures (VC) | Series A valuation, investment amount, board composition |
+| `patent_licensing` | TechVentures (buyer) vs. BioGen Therapeutics (seller) | Patent-licensing royalty rate and license scope |
+
+Each scenario has 4 agents: two lead negotiators (one per side) and two counsel/specialists.
+The leads drive the conversation; counsel only speak when their principal @mentions them.
+Everyone shares one room, so the opposing side sees everything — counsel use guarded
+language accordingly.
+
+### `series_a` agents (default)
+
+| Agent | Org | Framework | Role |
+|---|---|---|---|
+| Startup CEO | NovaTech | LangGraph | Lead negotiator — maximize valuation, keep founder control |
+| Startup Lawyer | NovaTech | PydanticAI | Counsel on term-sheet provisions and governance |
+| VC Partner | Apex Ventures | LangGraph | Lead negotiator — target equity stake, investor protections |
+| VC Lawyer | Apex Ventures | PydanticAI | Counsel on deal structure and downside protection |
+
+### `patent_licensing` agents
+
+| Agent | Org | Framework | Role |
+|---|---|---|---|
+| Contract Attorney | TechVentures | LangGraph | Lead buyer negotiator — broad license, low royalties |
+| IP Analyst | TechVentures | PydanticAI | Patent-scope analysis, prior-art leverage |
+| Licensing Counsel | BioGen | PydanticAI | Lead seller negotiator — protect IP, maximize revenue |
+| Regulatory Advisor | BioGen | PydanticAI | FDA / EAR / GDPR compliance |
+
+Framework and model are configured per agent in `scenarios/<scenario>/agents.yaml`.
+`series_a` agents run on Claude (Anthropic); `patent_licensing` agents run on GPT.
+The adapter factory (`adapter_factory.py`) also supports the Anthropic SDK, CrewAI,
+Letta, and Parlant adapters if you want to swap a framework.
+
+## What This Demonstrates
+
+| Band capability | How it shows up |
+|---|---|
+| **Cross-framework interop** | LangGraph and PydanticAI agents collaborate in one room |
+| **Cross-organizational comms** | Agents from opposing companies negotiate through a shared room |
+| **@mention routing** | Agents address each other by name; the platform routes and gates messages |
+| **Mention-filtered visibility** | Agents only see messages they're @mentioned in; counsel stay quiet until pulled in |
+| **Specialist escalation** | Leads add their own counsel mid-negotiation via `band_add_participant` |
+| **Thought events** | Agents share internal strategy notes via `band_send_event` |
+| **Long-term memory (optional)** | Team strategy seeded as org-scoped memories, gated behind `BAND_ENABLE_MEMORY` |
 
 **NovaTech** (AI-powered drug discovery, $1.2M ARR) is raising a $5M Series A from **Apex Ventures**. Both sides have walk-away lines. Counsel only speaks when @mentioned by their principal.
 
-| Agent | Org | Role |
-|---|---|---|
-| Startup CEO | NovaTech | Lead negotiator — targets $22M pre-money, defends founder equity |
-| Startup Lawyer | NovaTech | Counsel — term sheet provisions, governance, called in by CEO |
-| VC Partner | Apex Ventures | Lead negotiator — targets lower valuation, pushes for board control |
-| VC Legal Counsel | Apex Ventures | Counsel — investor protections, pro-rata rights, called in by Partner |
-
-### `patent_licensing` — TechVentures licenses a biomarker portfolio
-
-**TechVentures Inc.** (buyer) wants to license **BioGen Therapeutics'** diagnostic-biomarker patent portfolio for an AI diagnostic platform. Same four-seat structure.
-
-| Agent | Org | Role |
-|---|---|---|
-| TV Contract Attorney | TechVentures | Lead buyer — broad license scope, low royalty |
-| TV IP Analyst | TechVentures | Specialist — patent scope and prior-art leverage |
-| BG Licensing Counsel | BioGen | Lead seller — protect IP, maximize revenue |
-| BG Regulatory Advisor | BioGen | Specialist — FDA, export controls, GDPR |
-
-Both scenarios default to a mix of `pydantic_ai` and `langgraph` on OpenAI models. One yaml line per agent switches any of them to Codex, Claude, Gemini, or a local model — see [Swap a framework](#swap-a-framework).
-
----
-
-## The demo architecture
-
-Four agents, one room, mention-routed.
-
-```
-     +-------------- one Thenvoi room --------------+
-     |                                              |
-+----+-----+                                  +-----+----+
-| Startup  |                                  |    VC    |
-|   CEO    |<------ @mentions, offers ------->|  Partner |
-+----+-----+                                  +-----+----+
-     |                                              |
-     | @ counsel                          @ counsel |
-     v                                              v
-+----------+                                  +----------+
-| Startup  |                                  |    VC    |
-|  Lawyer  |                                  |   Legal  |
-|          |                                  |  Counsel |
-+----------+                                  +----------+
-
-         (every text message is visible to all 4;
-          agents also emit thought events via
-          thenvoi_send_event — the opposing side
-          never reads those)
-```
-
-This topology mirrors a real four-seat mediation: consulting counsel is a public signaling move as much as a private question, and both sides seeing counsel's replies is a deliberate design choice.
-
----
-
-## Manual Quick Start
-
-> Steps below use `series_a`. To use `patent_licensing` instead, substitute the scenario name and agent names throughout.
-
-### 1. Get the repo
-
-```bash
-git clone https://github.com/thenvoi/legal-demo legal-demo
-cd legal-demo
-```
-
-### 2. Install dependencies
-
-```bash
-# With uv (faster):
-uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt
-
-# With pip:
-python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-```
-
-### 3. Sign up and get credentials
-
-**Thenvoi account:** Go to [thenvoi.com](https://www.thenvoi.com) → "Get started for free". Sign up with your email.
-
-**User API key:** In the app, go to your name (top-left) → Settings → REST API Keys → "Create New API Key". Copy it.
-
-<img src="img/screenshots/user-apikey.png" alt="Settings page — REST API Keys section with Create New API Key button highlighted" />
-<sub>Settings → REST API Keys. Click "Create New API Key", give it a name, and copy the value.</sub>
-
-**Model API key:** The defaults use OpenAI. Put both keys in `.env`:
+### 1. Configure environment
 
 ```bash
 cp .env.example .env
-# Add THENVOI_API_KEY_USER and OPENAI_API_KEY
+# Edit .env with your API keys
 ```
 
-No OpenAI key? See [Swap a framework](#swap-a-framework) — you can run the whole demo on a Codex subscription, Claude subscription, or a local model with no API key.
+You need:
+- `BAND_API_KEY_USER` — a User API key from your Band account settings. Used by
+  `setup_agents.py` to register agents and by `kickoff.py` for room setup.
+- `ANTHROPIC_API_KEY` — for the `series_a` agents (Claude).
+- `OPENAI_API_KEY` — for the `patent_licensing` agents (GPT).
 
-### 4a. Create the four agents on Thenvoi
+Optional:
+- `BAND_API_KEY_USER_STARTUP` / `BAND_API_KEY_USER_VC` — per-team User API keys. When
+  set, each team's agents register under its own account so team-strategy memories stay
+  isolated. Both fall back to `BAND_API_KEY_USER` when unset.
+- `BAND_ENABLE_MEMORY=1` — enable the platform Memory API (Enterprise plan only).
+  When unset, the demo runs without memory: no team-strategy seeding, no memory tools.
 
-Go to [app.thenvoi.com/agents](https://app.thenvoi.com/agents) → "Create new agent". For each agent:
-
-1. Enter the Agent Name exactly as shown in the table below
-2. Add a short description of the agent's role
-3. Check **"External Agent (brings its own reasoning loop)"**
-4. Click **"Create External Agent"**
-
-<img src="img/screenshots/create-agent.png" alt="New agent form filled in with name and description, External Agent checkbox ticked, Create External Agent button highlighted" width="460" />
-<sub>Fill in the name and description, check External Agent, then click Create External Agent.</sub>
-
-### 4b. Copy credentials into the config file
-
-After creating each agent, copy its **API key** (shown once — copy it immediately) and its **Agent UUID** from the top of the agent's detail page.
-
-<img src="img/screenshots/agent-credentials.png" alt="Agent detail page showing the Agent UUID row and API Key Management panel with Regenerate API Key button" />
-<sub>Agent UUID is always visible at the top. The API key is shown only at creation — use Regenerate API Key if you missed it.</sub>
-
-The four agents for `series_a`:
-
-| Agent Name | Config key |
-|---|---|
-| Startup CEO | `startup_ceo` |
-| Startup Lawyer | `startup_lawyer` |
-| VC Partner | `vc_partner` |
-| VC Legal Counsel | `vc_legal_counsel` |
+### 2. Install dependencies
 
 ```bash
 cp agent_config.series_a.yaml.example agent_config.series_a.yaml
 # Paste agent_id and api_key for each agent
 ```
 
-### 5. Start the agents and kick off a negotiation
+### 3. Register agents on the platform
 
 ```bash
-python run_all.py --scenario series_a
+python setup_agents.py                                # series_a (default)
+python setup_agents.py --scenario patent_licensing    # patent_licensing
 ```
 
-You should see four lines like `[startup_ceo] Startup CEO agent is online.`
+This deletes the scenario's existing agents, re-registers them, and writes their
+credentials to `agent_config.yaml`. Tear them down with `python setup_agents.py --delete`.
 
-In your browser, go to [app.thenvoi.com](https://app.thenvoi.com), create a new chat room, add all four agents as participants, then send the opening message:
-
-```
-@VC Partner Thank you for taking this meeting. NovaTech is raising
-a $5M Series A and we're targeting a $22M pre-money valuation. Two
-terms on the table: valuation and board composition. Your move.
-```
-
-VC Partner receives the @mention, decides whether to consult counsel, and replies. The whole negotiation unfolds in the room.
-
-<img src="img/screenshots/chat-room.png" alt="Chat room showing the four agents negotiating — @mention tags highlighted, participants panel on the right, events channel filter at the top" />
-<sub>The negotiation in progress. @mentions route messages to the right agent; the events panel shows the separate channel for thought events.</sub>
-
-Or skip the manual room setup entirely: `python kickoff.py --scenario series_a` creates the room, adds participants, and sends the opening message for you (requires `THENVOI_API_KEY_USER` in `.env`).
-
----
-
-## Optional automation
-
-Two helper scripts for a one-command path, both requiring `THENVOI_API_KEY_USER` in your `.env`:
+### 4. Start the agents
 
 ```bash
-# Bulk-register all agents for a scenario (writes agent_config.<scenario>.yaml)
-python setup_agents.py --scenario series_a
-
-# Create the room, add participants, and send the opening @mention
-python kickoff.py --scenario series_a
-
-# Tear down
-python setup_agents.py --delete --scenario series_a
+python run_all.py                                     # series_a (default)
+python run_all.py --scenario patent_licensing         # patent_licensing
+python run_all.py --scenario series_a vc_*            # launch a subset (glob patterns)
 ```
 
-`setup_agents.py` replaces the manual steps in 4a and 4b above. `kickoff.py` replaces the manual room setup in step 5. The manual path is the recommended way to get familiar with the platform.
+Press Ctrl+C to shut all of them down.
+
+### 5. Kick off the negotiation
+
+In a separate terminal, once the agents are running:
+
+```bash
+python kickoff.py                                     # series_a (default)
+python kickoff.py --scenario patent_licensing         # patent_licensing
+python kickoff.py --no-clean                          # skip deactivating old rooms
+python kickoff.py --message "Custom kickoff..."       # custom kickoff message
+```
+
+`kickoff.py` creates a single negotiation room, adds the two lead negotiators, and sends
+the opening message from the side that starts. By default it first cleans up old rooms
+(removes participants — the API has no delete-room endpoint); use `--no-clean` to skip.
+
+Watch the negotiation unfold in the Band platform UI.
 
 ---
 
-## Swap a framework
-
-Every agent is framework-agnostic: the choice lives in `scenarios/<scenario>/agents.yaml`, not in the agent code. That's the main reason to use this demo — your four agents can use four different frameworks, your team can bring whatever auth you already have, and the room stays the same.
-
-Out of the box, `series_a` runs one agent on `pydantic_ai` and three on `langgraph` (all OpenAI `gpt-5.4`), and `patent_licensing` runs one on `langgraph` and three on `pydantic_ai` (all OpenAI `gpt-5.4-mini`). Both need `OPENAI_API_KEY` in your `.env`.
-
-To swap any agent, edit its entry in the scenario's `agents.yaml`. The file has the most useful alternatives commented at the top, so it's a copy-paste.
-
-**Use your Codex CLI subscription** (no API key needed, `codex login` handles auth):
-
-```yaml
-vc_partner:
-  framework: codex
-  model: gpt-5.4-mini
-  reasoning_effort: high
-```
-
-Run `brew install codex && codex login` once if you haven't already.
-
-**Use your Claude subscription** via the Claude Agent SDK:
-
-```yaml
-vc_partner:
-  framework: claude_sdk
-  model: claude-sonnet-4-6
-  max_thinking_tokens: 16000
-```
-
-Then `pip install 'thenvoi-sdk[claude_sdk]'`.
-
-**Point langgraph at a local model** through any OpenAI-compatible endpoint (Ollama, vLLM, LM Studio):
-
-```yaml
-vc_partner:
-  framework: langgraph
-  model: llama3.1:8b
-```
-
-Set `OPENAI_BASE_URL=http://localhost:11434/v1` and `OPENAI_API_KEY=ollama` (any placeholder) in your `.env`.
-
-The adapter factory forwards every yaml key beyond `framework` and `model` straight into the underlying adapter constructor. Any adapter-specific knob (`reasoning_effort`, `max_thinking_tokens`, `temperature`, `approval_mode`) lives in yaml; no Python changes required.
-
-### Adapters in the Thenvoi SDK
-
-| Adapter | Framework | Good for |
-|---|---|---|
-| `codex` | OpenAI Codex CLI | Strongest OpenAI reasoning models; thoughts routed to events by default |
-| `claude_sdk` | Claude Agent SDK | Claude with MCP tool integration and configurable thinking budgets |
-| `anthropic` | Anthropic Python SDK | Lightweight Claude integration without MCP |
-| `pydantic_ai` | PydanticAI | Structured outputs validated at the Python level |
-| `langgraph` | LangGraph + LangChain | Stateful multi-step graphs inside a single agent |
-| `gemini` | Google GenAI SDK | Gemini 2.5 |
-| `google_adk` | Google Agent Development Kit | Gemini on Google's agent framework |
-| `crewai` | CrewAI | Role-based crew agents (Python 3.13 or older) |
-| `parlant` | Parlant | Guardrailed conversational flows |
-| `a2a` / `a2a_gateway` | Google A2A | Cross-organization interop with A2A-protocol agents |
-| `acp` | Agent Communication Protocol | ACP-compliant agents |
-
-Each adapter has its own optional extra: `pip install 'thenvoi-sdk[claude_sdk,gemini,pydantic_ai]'`. Install only what you use.
-
----
-
-## Adding your own tools
-
-Thenvoi agents come with a standard toolbelt (send messages, send events, manage participants). The interesting moves come from tools you write yourself: hit an API, query a database, score a contract clause, verify a citation. The SDK hands the tool schema to the LLM and routes calls back to your code.
-
-The portable tool format is a tuple of `(PydanticInputModel, callable)`. The model defines the schema: its docstring becomes the tool description, its fields become the parameters, and its class name (minus a trailing `"Input"`) becomes the tool name. The callable receives the validated model instance and can be sync or async.
-
-```python
-# scenarios/patent_licensing/tools.py
-from pydantic import BaseModel, Field
-
-
-class LookupFdaGuidanceInput(BaseModel):
-    """Search the FDA guidance corpus and return the top matching passages.
-    Each result has a title, a section reference, and the passage text."""
-
-    query: str = Field(..., description="Natural-language search query")
-    top_k: int = Field(3, description="How many passages to return", ge=1, le=10)
-
-
-async def lookup_fda_guidance(inp: LookupFdaGuidanceInput) -> list[dict]:
-    results = await fda_index.query(inp.query, top_k=inp.top_k)
-    return [
-        {"title": r.title, "section": r.section, "text": r.text}
-        for r in results
-    ]
-
-
-FDA_TOOLS = [(LookupFdaGuidanceInput, lookup_fda_guidance)]
-```
-
-Wire the tools into an agent by passing the list to `create_adapter`:
-
-```python
-adapter = create_adapter(
-    "bg_regulatory_advisor",
-    CUSTOM_SECTION,
-    scenario,
-    additional_tools=FDA_TOOLS,
-)
-```
-
-The `(InputModel, callable)` tuple format works across `codex`, `claude_sdk`, `anthropic`, `gemini`, and `google_adk`. The two outliers are `pydantic_ai` (bare callables) and `langgraph` (LangChain `@tool` objects) — if you need a tool on those adapters, use their native formats.
-
-Some tool ideas that would meaningfully upgrade this demo:
-
-- `lookup_case(query, jurisdiction)` — hit a case-law API and return matching citations with short summaries
-- `calculate_cap_table(pre_money, investment, option_pool)` — run the ownership math deterministically
-- `check_citation(claim, source_url)` — fetch a source and verify the claim actually appears in it
-- `score_clause(clause_text, risk_category)` — classify a clause against a risk taxonomy
-- `draft_term_sheet(agreed_terms)` — render agreed terms into a markdown or PDF template
-- `search_precedent(fact_pattern)` — semantic search over a historical deal corpus
-
----
-
-## Attaching an MCP server
-
-If a tool you want already exists as an MCP server (Harvey, a filesystem server, a fetch server, anything from the [MCP registry](https://modelcontextprotocol.io)), you don't need to hand-write a Pydantic model for it. `mcp_tools.py` in this repo wraps the official `mcp` Python client: point it at any stdio or streamable-HTTP MCP server, call `start()`, and you get back a list of `CustomToolDef` tuples ready for `create_adapter(..., additional_tools=...)`.
-
-### Example: a local stdio MCP server
-
-The quickest way to try MCP — no credentials needed:
-
-```python
-provider = MCPToolsProvider.stdio(
-    command="uvx",
-    args=["mcp-server-time"],
-)
-tools = await provider.start()
-```
-
-Or as a context manager:
-
-```python
-async with MCPToolsProvider.http(url=..., headers=...) as tools:
-    adapter = create_adapter(..., additional_tools=tools)
-    # agent runs inside the with-block
-```
-
-### Example: Harvey MCP
-
-If you have enterprise Harvey access, [Harvey's MCP server](https://developers.harvey.ai/guides/harvey_mcp) exposes legal workflows over streamable HTTP with OAuth. Once you have a bearer token:
-
-```python
-from mcp_tools import MCPToolsProvider
-
-provider = MCPToolsProvider.http(
-    url="https://mcp.harvey.ai/mcp",
-    headers={"Authorization": f"Bearer {os.environ['HARVEY_OAUTH_TOKEN']}"},
-)
-harvey_tools = await provider.start()
-
-try:
-    adapter = create_adapter(
-        "bg_regulatory_advisor",
-        CUSTOM_SECTION,
-        scenario,
-        additional_tools=harvey_tools,
-    )
-    # ... Agent.create(...).run()
-finally:
-    await provider.stop()
-```
-
-MCP tools use the same portable tuple format, so the same framework compatibility applies: `codex`, `claude_sdk`, `anthropic`, `gemini`, `google_adk`. If an agent is on `pydantic_ai` or `langgraph`, switch its framework in `agents.yaml` first.
-
----
-
-## Project layout
-
-```
-.env.example             environment variable template (copy to .env)
-adapter_factory.py       create_adapter(), load_credentials(), credentials_path()
-tool_filter.py           per-process tool-list filtering
-mcp_tools.py             MCPToolsProvider — wrap any MCP server as CustomToolDef tuples
-run_all.py               launches all agents in a scenario as subprocesses
-setup_agents.py          optional: bulk-register agents via the Human API
-kickoff.py               optional: bulk-create the room and send the opener
-
-scenarios/
-  series_a/
-    scenario.py          AGENTS, AGENT_MODULES, get_kickoff_config()
-    agents.yaml          framework + model + adapter options per agent
-    startup_ceo.py       the four agent modules; each is about 80 lines
-    startup_lawyer.py
-    vc_partner.py
-    vc_legal_counsel.py
-  patent_licensing/
-    ... same shape
-
-agent_config.series_a.yaml.example      credentials template (copy, fill in UUIDs + keys)
-agent_config.patent_licensing.yaml.example
-```
-
-An agent module is short. It builds a `CUSTOM_SECTION` system-prompt string, asks the factory for an adapter, loads its credentials from `agent_config.<scenario>.yaml`, and calls `Agent.create(...).run()`. All framework-specific wiring lives in `adapter_factory.py`. Scenario code never imports a framework directly, which is why swapping frameworks is a yaml edit.
-
----
-
-## Where to take it
-
-The scaffolding is done. Below is a menu of directions, organized into ideas for extending the scenario, going deeper on a single feature, and one challenge that goes cross-team.
-
-### New scenarios
-
-Replace the prompts and yaml with a different legal context or safety constraint:
-
-- **Contract redlining.** Buyer's counsel and seller's counsel mark up a draft MSA clause by clause, backed by a tool that reads the current draft and records edits.
-- **Discovery scope dispute.** Plaintiff and defendant negotiate what has to be produced, refereed by a magistrate-judge agent.
-- **Divorce mediation.** Two parties, a mediator, and an optional shared financial advisor.
-- **Settlement conference.** Plaintiff and defendant work toward a dollar number with a court-appointed mediator.
-- **Policy drafting.** Regulators and industry counsel co-draft a model rule.
-- **Internal strategy meeting.** One firm, partners and associates, deciding how to staff a case. Same demo code, different room topology (collaborative instead of adversarial).
-- **Citation enforcement.** A preprocessor that rejects any legal claim without a statute or case cite. Agents have to call a `cite_source` tool before making assertions.
-- **Jailbreak resistance.** Can the opposing side extract your walk-away number by asking cleverly? Add a preprocessor that redacts walk-away language before messages go out, then try to break your own redactor.
-- **Ethics observer.** A fifth agent, silent by default, that audits for bar-rule violations and flags them as events. The opposing side never sees the audit channel, but a judge can.
-- **Confidence scoring.** Agents tag every factual claim with a confidence value. Low-confidence claims trigger a counsel consultation before the message is sent.
-- **Human-in-the-loop approval.** Counsel's messages are held for human review before hitting the room. The codex adapter has an `approval_mode` field; flip it to `manual` and wire up a tiny approval UI.
-- **Refusal patterns.** The lawyer refuses to sign off on unconscionable terms and explains why in the room, forcing the opposing side to justify their position.
-
-### Document integration
-
-- **RAG-backed counsel.** Hook a specialist agent up to a vector store of case law or regulatory guidance. Every reply carries real citations.
-- **Term-sheet generation.** When the negotiation concludes, a scribe agent converts agreed terms into a structured term sheet.
-- **PDF ingestion.** IP analyst reads a patent PDF via a tool and extracts claims into a table.
-
-### Framework demonstrations
-
-- **Long-form reasoning.** Swap one agent to `claude_sdk` with `max_thinking_tokens: 16000` to show structured thinking on a hard clause.
-- **Structured counter-offers.** Swap one to `pydantic_ai` and force it to emit typed dicts validated at the Python level — rejected if the schema doesn't match.
-- **Internal planning loop.** Use `langgraph` for a planner agent that runs a multi-step internal loop before responding to the other side.
-- **Cross-org agents.** Use the `a2a` adapter to accept agents from teams that built on Google's A2A protocol.
-
-### Cross-team challenge
-
-Run only your side of the negotiation and borrow the other side from a different team.
-
-Ask them for the handle of one of their agents, add it through the Contacts tab at app.thenvoi.com, and once they accept the contact request you can drop that agent into your room like any other participant. Your prompts and their prompts, different frameworks, same room. First team whose negotiator closes inside their walk-away limit wins.
-
----
-
-## Tips for writing good legal agents
-
-Prompts live in `scenarios/<name>/<agent>.py` in the `CUSTOM_SECTION` variable.
-
-**Hardcode walk-away lines.** Agents without an explicit floor drift toward the middle and give up value. Give your lead negotiator a number and a reason to defend it.
-
-**Separate identity from instructions.** The identity section says who the agent is: name, role, personality. The instructions section says what to do: hold this line, concede on that, escalate to counsel on the other. Mixing the two produces wobbly behavior.
-
-**Tell counsel to stay quiet.** Without an explicit rule, a specialist agent will try to helpfully comment on every message. The prompt should say: respond only when your principal @mentions you.
-
-**Warn counsel that the opposing side can read their replies.** Otherwise counsel will say things like "our walk-away is $18M" in the middle of a public room. A real-world lawyer in a mediation picks their words carefully for exactly this reason.
-
-**Give the leads a termination condition.** Something like "once both sides have confirmed the same terms, send one final confirmation and stop." Without it you get an infinite politeness loop where the two leads re-confirm the deal five times.
-
----
-
-## Worked example 1: ethics observer agent
-
-Add a fifth agent that silently audits the negotiation for bar-rule violations and flags them as Thenvoi events. The opposing side never sees the audit channel, but a judge or demo audience can.
-
-1. Create `scenarios/series_a/ethics_observer.py` following the pattern in the existing agent files. Its `CUSTOM_SECTION` defines an auditor persona: listens to everything, tags issues, never sends a room-visible message.
-2. Add `ethics_observer` to `AGENTS` and `AGENT_MODULES` in `scenario.py`, and add a matching entry in `agents.yaml`. A smaller model is fine since the observer just pattern-matches.
-3. Add the observer to the room's `participants` list in `get_kickoff_config()`.
-4. In the observer's prompt, require it to use only `thenvoi_send_event` (never `thenvoi_send_message`), with event kinds like `ethics_flag` and a structured payload such as `{"rule": "MRPC 4.2", "severity": "high", "reason": "…"}`.
-5. Call `tool_filter.remove_tools("thenvoi_send_message")` at the top of `ethics_observer.py` so the adapter physically can't emit a visible message even if the prompt fails.
-6. Optional: write a small subscriber script that reads the room's event stream via the REST API and prints ethics flags in real time, next to the text transcript.
-
-This shows off three Thenvoi features at once: multi-agent rooms, mention-filtered visibility, and the events channel as a separate audit layer.
-
----
-
-## Worked example 2: RAG-backed regulatory counsel
-
-Replace the patent licensing scenario's `bg_regulatory_advisor` with a real retrieval pipeline so it cites actual FDA guidance instead of improvising.
-
-1. Build a vector store over an FDA guidance corpus. Chroma, Qdrant, and pgvector all work. A few hundred guidance documents is plenty for a demo.
-2. Switch `bg_regulatory_advisor` to a framework with strong tool support by editing `scenarios/patent_licensing/agents.yaml`:
-   ```yaml
-   bg_regulatory_advisor:
-     framework: claude_sdk
-     model: claude-sonnet-4-6
-     max_thinking_tokens: 16000
-   ```
-   Then `pip install 'thenvoi-sdk[claude_sdk]'`.
-3. Write `lookup_fda_guidance(inp)` as a `CustomToolDef` tuple using the pattern above. Put it in `scenarios/patent_licensing/tools.py`.
-4. Import the tool list in `bg_regulatory_advisor.py` and pass it to `create_adapter(..., additional_tools=FDA_TOOLS)`. That's the only change the agent module needs.
-5. In the advisor's prompt, require it to call `lookupfdaguidance` before making any claim about FDA rules, and to quote the returned text verbatim.
-6. Optional: add a `CheckCitationInput` / `check_citation` tool that fetches the source and verifies the claim appears in it before the agent sends its reply.
-
-You now have a specialist that can't hallucinate regulatory requirements because the prompt forces it to ground every claim in a retrieved source.
-
----
-
-## Troubleshooting
-
-**Agents boot but nothing happens after kickoff:** the `@mention` has to name an agent actually in the room. Thenvoi only routes messages to explicitly mentioned participants, so a missing or misspelled @mention produces silence.
-
-**`codex: command not found`:** `brew install codex && codex login`. Confirm `codex --version` works in the same terminal where you run `run_all.py`.
-
-**`ImportError: X is required for Y adapter`:** install the optional extra, e.g. `pip install 'thenvoi-sdk[gemini]'`.
-
-**Agents see empty context on startup:** each agent only sees messages it sent or was @mentioned in. If your kickoff message doesn't @mention anyone, no agent will react. Re-send with a mention.
-
-**Agents loop re-confirming a deal:** their prompts need a termination condition. See the tips above.
-
-**API key shown only once:** if you missed copying an agent's API key during creation, open the agent at app.thenvoi.com and click "Regenerate API Key". Update `agent_config.<scenario>.yaml` with the new key and restart that agent.
-
----
-
-## Links
-
-- Thenvoi platform: [app.thenvoi.com](https://app.thenvoi.com)
-- Thenvoi docs: [docs.thenvoi.com](https://docs.thenvoi.com)
-
----
-
-MIT. Fork it, break it, ship it.
-
-<sub>Originally built for the <a href="https://luma.com/9x9fd4lk">LLM × Law Hackathon #6</a> at Stanford Law School, April 12 2026.</sub>
+- Each agent is a standalone Python process connected to Band over a WebSocket.
+  `run_all.py` spawns one `multiprocessing.Process` per agent.
+- Agent behavior is driven entirely by system-prompt strings (`CUSTOM_SECTION` in each
+  agent module, assembled from `scenarios/prompt_templates.py`) — not hardcoded logic.
+- Adapters are built by `adapter_factory.py` from each scenario's `agents.yaml`, so you
+  can change an agent's framework or model without touching the negotiation logic.
+- Room/peer-management tools (`band_lookup_peers`, `band_create_chatroom`) are excluded
+  from every agent; lead negotiators keep `band_add_participant` so they can pull in
+  their counsel by name.
+- The platform handles message routing, room management, mention-gated visibility, and
+  presence — agents just process messages and call tools.
+
+See [`CLAUDE.md`](CLAUDE.md) for the full scenario layout and the Band platform reference.

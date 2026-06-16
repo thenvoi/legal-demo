@@ -12,14 +12,8 @@ Each scenario directory contains an ``agents.yaml`` like::
       framework: langgraph
       model: claude-sonnet-4-6-20250514
 
-Any keys beyond ``framework`` and ``model`` are forwarded as keyword
-arguments to the underlying adapter (or, for codex, to ``CodexAdapterConfig``).
-That means adapter-specific knobs — ``reasoning_effort``, ``temperature``,
-``max_thinking_tokens``, etc. — live in the yaml without any factory changes.
-
-Supported frameworks:
-    ``anthropic``, ``pydantic_ai``, ``langgraph``,
-    ``claude_sdk``, ``codex``, ``gemini``, ``google_adk``.
+Supported frameworks: ``anthropic``, ``pydantic_ai``, ``langgraph``, ``crewai``,
+``letta``, ``parlant`` (parlant must be wired up directly in the agent module).
 """
 
 from __future__ import annotations
@@ -28,6 +22,10 @@ import os
 from pathlib import Path
 
 import yaml
+
+from band import AdapterFeatures, Capability
+
+from memory_config import memory_enabled
 
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -51,9 +49,31 @@ def load_credentials(agent_key: str, scenario: str) -> tuple[str, str]:
     Each scenario has its own ``agent_config.<scenario>.yaml`` so scenarios
     can be registered, run, and torn down independently of each other.
     """
-    from thenvoi.config import load_agent_config
+    from band.config import load_agent_config
 
     return load_agent_config(agent_key, config_path=credentials_path(scenario))
+
+
+def _build_features(can_invite: bool = False) -> AdapterFeatures:
+    """Shared adapter features.
+
+    - capabilities: enable the memory tools (band_list_memories, band_store_memory, ...)
+      that the negotiation prompts rely on — only when memory is enabled, since the
+      Memory API is Enterprise-only (see memory_config.py).
+    - exclude_tools: drop room/peer-management tools the agents must never use. This is
+      honored by the LangGraph adapter; pydantic_ai/anthropic ignore it (the prompt is
+      the backstop there — see scenarios/prompt_templates.py).
+    - can_invite: lead negotiators may add their own counsel mid-negotiation, so
+      band_add_participant is left available for them. band_lookup_peers and
+      band_create_chatroom stay excluded for everyone — leads add counsel by name only.
+    """
+    exclude = ["band_lookup_peers", "band_create_chatroom"]
+    if not can_invite:
+        exclude.insert(0, "band_add_participant")
+    return AdapterFeatures(
+        capabilities={Capability.MEMORY} if memory_enabled() else set(),
+        exclude_tools=tuple(exclude),
+    )
 
 
 def _model_provider(model: str) -> str:
@@ -72,6 +92,7 @@ def create_adapter(
     custom_section: str,
     scenario: str,
     *,
+    can_invite: bool = False,
     additional_tools: list | None = None,
 ):
     """Return an adapter instance configured via ``scenarios/<scenario>/agents.yaml``.
@@ -92,31 +113,29 @@ def create_adapter(
     framework = agent_cfg["framework"]
     model = agent_cfg["model"]
     provider = _model_provider(model)
-    extras = {k: v for k, v in agent_cfg.items() if k not in ("framework", "model")}
+    features = _build_features(can_invite)
 
     if framework == "anthropic":
-        from thenvoi.adapters import AnthropicAdapter
+        from band.adapters import AnthropicAdapter
 
         return AnthropicAdapter(
             model=model,
-            custom_section=custom_section,
-            additional_tools=additional_tools,
-            **extras,
+            prompt=custom_section,
+            features=features,
         )
 
     if framework == "pydantic_ai":
-        from thenvoi.adapters import PydanticAIAdapter
+        from band.adapters import PydanticAIAdapter
 
         return PydanticAIAdapter(
             model=f"{provider}:{model}",
             custom_section=custom_section,
-            additional_tools=additional_tools,
-            **extras,
+            features=features,
         )
 
     if framework == "langgraph":
         from langgraph.checkpoint.memory import InMemorySaver
-        from thenvoi.adapters import LangGraphAdapter
+        from band.adapters import LangGraphAdapter
 
         if provider == "anthropic":
             from langchain_anthropic import ChatAnthropic
@@ -129,55 +148,41 @@ def create_adapter(
             llm=llm,
             checkpointer=InMemorySaver(),
             custom_section=custom_section,
-            additional_tools=additional_tools,
-            **extras,
+            features=features,
         )
 
-    if framework == "claude_sdk":
-        from thenvoi.adapters import ClaudeSDKAdapter
+    if framework == "crewai":
+        from band.adapters import CrewAIAdapter
 
-        return ClaudeSDKAdapter(
+        return CrewAIAdapter(
             model=model,
             custom_section=custom_section,
-            additional_tools=additional_tools,
-            **extras,
+            features=features,
         )
 
-    if framework == "codex":
-        from thenvoi.adapters import CodexAdapter, CodexAdapterConfig
+    if framework == "letta":
+        from band.adapters import LettaAdapter
+        from band.adapters.letta import LettaAdapterConfig
 
-        # Route codex's internal reasoning through Thenvoi thought events
-        # (metadata-only, not visible to other participants) instead of the
-        # message channel, so agents don't leak strategy to the opposing side.
-        # agents.yaml can override by setting emit_thought_events: false.
-        codex_defaults = {"emit_thought_events": True}
-        return CodexAdapter(
-            config=CodexAdapterConfig(
-                model=model,
-                custom_section=custom_section,
-                **{**codex_defaults, **extras},
-            ),
-            additional_tools=additional_tools,
-        )
-
-    if framework == "gemini":
-        from thenvoi.adapters import GeminiAdapter
-
-        return GeminiAdapter(
-            model=model,
+        letta_model = f"{provider}/{model}"
+        config = LettaAdapterConfig(
+            model=letta_model,
             custom_section=custom_section,
-            additional_tools=additional_tools,
-            **extras,
+            enable_memory_tools=memory_enabled(),
+            api_key=agent_cfg.get("letta_api_key") or os.environ.get("LETTA_API_KEY"),
+            base_url=agent_cfg.get("letta_base_url", "https://api.letta.com"),
         )
+        return LettaAdapter(config=config)
 
-    if framework == "google_adk":
-        from thenvoi.adapters import GoogleADKAdapter
-
-        return GoogleADKAdapter(
-            model=model,
-            custom_section=custom_section,
-            additional_tools=additional_tools,
-            **extras,
+    if framework == "parlant":
+        raise ValueError(
+            "Parlant requires async setup (Server is an async context manager). "
+            "Create the adapter directly in the agent module:\n"
+            "  import parlant.sdk as p\n"
+            "  async with p.Server() as server:\n"
+            "      agent = await server.create_agent(name=..., description=...)\n"
+            "      adapter = ParlantAdapter(server=server, parlant_agent=agent, "
+            "custom_section=...)"
         )
 
     raise ValueError(f"Unknown framework: {framework}")

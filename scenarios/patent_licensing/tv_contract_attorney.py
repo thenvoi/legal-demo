@@ -14,12 +14,12 @@ import os
 
 from dotenv import load_dotenv
 
-from thenvoi import Agent
+from band import Agent
 
 from adapter_factory import create_adapter, load_credentials
 from platform_url import get_platform_url, get_ws_url
 from scenarios.prompt_templates import build_lead_prompt
-from self_aware_preprocessor import SelfAwarePreprocessor
+from self_aware_preprocessor import DebouncePreprocessor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 logger = logging.getLogger("tv_contract_attorney")
@@ -54,17 +54,21 @@ CUSTOM_SECTION = build_lead_prompt(
         "## ADDITIONAL GUIDANCE\n"
         "- Proactively raise IP scope and patent validity issues -- you have leverage.\n"
     ),
+    closing_action="We look forward to receiving the draft license agreement from your side.",
+    invite_counsel=True,
 )
 
 
 async def main() -> None:
     load_dotenv()
-    from tool_filter import remove_tools
-    remove_tools("thenvoi_add_participant", "thenvoi_lookup_peers", "thenvoi_create_chatroom")
 
     scenario = os.path.basename(os.path.dirname(__file__))
     agent_id, api_key = load_credentials("tv_contract_attorney", scenario)
-    adapter = create_adapter("tv_contract_attorney", CUSTOM_SECTION, scenario)
+
+    from agent_config_ext import inject_team_subject_id
+    custom_section = inject_team_subject_id("tv_contract_attorney", CUSTOM_SECTION, scenario)
+
+    adapter = create_adapter("tv_contract_attorney", custom_section, scenario, can_invite=True)
 
     agent = Agent.create(
         adapter=adapter,
@@ -72,7 +76,7 @@ async def main() -> None:
         api_key=api_key,
         ws_url=get_ws_url(),
         rest_url=get_platform_url(),
-        preprocessor=SelfAwarePreprocessor(),
+        preprocessor=DebouncePreprocessor(),
     )
 
     logger.info("TechVentures Contract Attorney agent is online.")

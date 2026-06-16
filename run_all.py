@@ -45,11 +45,11 @@ def _run_agent(mod_name: str) -> None:
         force=True,
     )
 
-    if os.environ.get("THENVOI_DEBUG") == "1":
+    if os.environ.get("BAND_DEBUG") == "1":
         for name in (
-            "thenvoi.adapters.pydantic_ai",
-            "thenvoi.preprocessing",
-            "thenvoi.runtime.execution",
+            "band.adapters.pydantic_ai",
+            "band.preprocessing",
+            "band.runtime.execution",
             "httpx",
             "openai",
         ):
@@ -72,7 +72,7 @@ def main() -> None:
     args, remaining = parser.parse_known_args()
 
     if args.debug:
-        os.environ["THENVOI_DEBUG"] = "1"
+        os.environ["BAND_DEBUG"] = "1"
 
     scenario_mod = importlib.import_module(f"scenarios.{args.scenario}.scenario")
     agent_modules = scenario_mod.AGENT_MODULES

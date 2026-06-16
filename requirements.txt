@@ -1,4 +1,7 @@
-thenvoi-sdk[langgraph,anthropic,pydantic_ai,claude_sdk,codex,gemini,google_adk]
+band-sdk[langgraph,anthropic,pydantic-ai]
+# REST client used directly by setup_agents.py / kickoff.py / check_memories.py.
+# band-sdk depends on it transitively; pinned here because we import it directly.
+thenvoi-client-rest
 langchain-openai
 langchain-anthropic
 python-dotenv

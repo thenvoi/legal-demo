@@ -15,6 +15,6 @@ vc_partner:
   agent_id: ""
   api_key: ""
 
-vc_legal_counsel:
+vc_counsel:
   agent_id: ""
   api_key: ""

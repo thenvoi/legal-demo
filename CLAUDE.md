@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A multi-agent negotiation demo where 4 AI agents negotiate through the Thenvoi platform. Supports multiple negotiation scenarios, each with its own agents, domain-specific prompts, and isolated credentials. All four agents in a scenario share a single room.
 
-Every agent is framework-agnostic: the choice of adapter (`codex`, `claude_sdk`, `anthropic`, `pydantic_ai`, `langgraph`, `gemini`, `google_adk`) is driven by a per-scenario `agents.yaml`, not hardcoded in the agent module. Swap any agent to a different framework by editing yaml alone. Current defaults: `series_a` ships 1 `pydantic_ai` + 3 `langgraph` on `gpt-5.4`; `patent_licensing` ships 1 `langgraph` + 3 `pydantic_ai` on `gpt-5.4-mini`. Both default mixes require `OPENAI_API_KEY`. Each `agents.yaml` has commented alternative blocks at the top (codex subscription, claude_sdk subscription, langgraph + local model) so switching away from OpenAI is a copy-paste, not a refactor.
+Every agent is framework-agnostic: the choice of adapter (`anthropic`, `pydantic_ai`, `langgraph`, `crewai`, `letta`, `parlant`) is driven by a per-scenario `agents.yaml`, not hardcoded in the agent module. Swap any agent to a different framework by editing yaml alone. Current defaults: `series_a` runs 2 `langgraph` + 2 `pydantic_ai` on `claude-sonnet-4-6` (needs `ANTHROPIC_API_KEY`); `patent_licensing` runs 1 `langgraph` + 3 `pydantic_ai` on `gpt-5.4-mini` (needs `OPENAI_API_KEY`). Each `agents.yaml` documents alternative framework/model blocks at the top (e.g. a local model via `langgraph` against an OpenAI-compatible endpoint) so switching providers is a copy-paste, not a refactor.
 
 **Available scenarios:**
 - `series_a` (default) — NovaTech (startup) + Apex Ventures (VC) negotiate Series A funding terms
@@ -16,26 +16,24 @@ Every agent is framework-agnostic: the choice of adapter (`codex`, `claude_sdk`,
 
 ```bash
 # Setup
-cp .env.example .env                                     # fill in THENVOI_API_KEY_USER
+cp .env.example .env                                     # fill in BAND_API_KEY_USER
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+# setup_agents.py deletes this scenario's existing agents, then re-registers them.
+python setup_agents.py                         # registers agents for series_a (default)
+python setup_agents.py --scenario patent_licensing  # registers patent_licensing agents
+python setup_agents.py --delete                # tears down the scenario's agents
 
-# Register agents (scenarios are isolated — run both if you want both)
-python setup_agents.py                                   # series_a (default)
-python setup_agents.py --scenario patent_licensing
-python setup_agents.py --delete                          # tear down series_a
-python setup_agents.py --delete --scenario patent_licensing
-
-# Run agents
-python run_all.py                                        # series_a (default)
-python run_all.py --scenario patent_licensing
-python run_all.py --scenario series_a vc_*               # glob filter
+# Run
+python run_all.py                              # launches series_a agents (default)
+python run_all.py --scenario patent_licensing  # launches patent_licensing agents
+python run_all.py --scenario series_a vc_*     # launch subset (glob patterns)
 
 # Kickoff (separate terminal, after agents are running)
-python kickoff.py                                        # series_a (default)
-python kickoff.py --scenario patent_licensing
-python kickoff.py --no-clean                             # skip deactivating old rooms
-python kickoff.py --message "..."                        # custom kickoff message
+python kickoff.py                              # starts series_a negotiation (default)
+python kickoff.py --scenario patent_licensing  # starts patent_licensing negotiation
+python kickoff.py --no-clean                   # skip deactivating old rooms
+python kickoff.py --message "..."              # custom kickoff message
 ```
 
 No test suite or linting config exists yet.
@@ -51,14 +49,7 @@ scenarios/
     startup_ceo.py
     startup_lawyer.py
     vc_partner.py
-    vc_legal_counsel.py
-  patent_licensing/
-    scenario.py
-    agents.yaml
-    tv_contract_attorney.py
-    tv_ip_analyst.py
-    bg_licensing_counsel.py
-    bg_regulatory_advisor.py
+    vc_lawyer.py
 ```
 
 Each `scenario.py` exports:
@@ -68,7 +59,7 @@ Each `scenario.py` exports:
 
 Each `agents.yaml` maps `config_key` → adapter config. `framework` and `model` are required; every other key (e.g. `reasoning_effort`, `max_thinking_tokens`, `temperature`) is forwarded into the adapter constructor by `adapter_factory.create_adapter`. That means adding an adapter-specific knob never requires factory edits.
 
-**Config key invariant:** for each agent, the module filename, the `config_key` in `scenario.py`'s `AGENTS`, the key in `agents.yaml`, and the argument to `create_adapter`/`load_credentials` must all match. See `vc_legal_counsel` across the series_a scenario for the canonical pattern.
+**Config key invariant:** for each agent, the module filename, the `config_key` in `scenario.py`'s `AGENTS`, the key in `agents.yaml`, and the argument to `create_adapter`/`load_credentials` must all match. See `startup_ceo` across the series_a scenario for the canonical pattern. (The series_a VC lawyer is the one exception: its module is `vc_lawyer.py` but its config_key is `vc_counsel` — the filename differs, but the config_key matches across `scenario.py`, `agents.yaml`, and `create_adapter`/`load_credentials`, which is what actually matters.)
 
 **Core pattern** (all agents follow this):
 ```python
@@ -90,16 +81,17 @@ Agent behavior is driven by detailed `CUSTOM_SECTION` system prompt strings, not
 - `setup_agents.py` uses REST (`thenvoi_rest.AsyncRestClient` with the User API key) to register agents and get per-agent credentials, written to `agent_config.<scenario>.yaml`
 - `kickoff.py` reads `agent_config.<scenario>.yaml`, creates rooms, adds participants, and sends kickoff/briefing messages based on `scenario.py`
 - `run_all.py` spawns each agent as a `multiprocessing.Process`; each calls `asyncio.run(agent_module.main())`
-- At runtime, agents connect via WebSocket and use Thenvoi tools: `thenvoi_send_event`, `thenvoi_send_message`, etc.
+- At runtime, agents connect via WebSocket and use Band tools: `band_send_event`, `band_send_message`, etc.
 
-**Tool filtering:** `tool_filter.remove_tools(...)` pops entries from `thenvoi.runtime.tools.TOOL_DEFINITIONS`. Every adapter that reads tools through `AgentToolsProtocol.get_tool_schemas` (codex, anthropic, pydantic_ai, claude_sdk, gemini, google_adk) is filtered by that single pop. LangGraph and CrewAI have their own tool builders and are monkey-patched separately — each patch is guarded by `try/except ImportError`, so the filter works fine on environments without those optional deps.
-
-**MCP integration:** `mcp_tools.MCPToolsProvider` wraps the official `mcp` Python client and turns any stdio or streamable-HTTP MCP server's tool list into portable `CustomToolDef` tuples that slot into `create_adapter(..., additional_tools=...)`. The provider uses an `AsyncExitStack` for lifetime management; typical use is `await provider.start()` near the top of an agent module's `main()` and `await provider.stop()` in a `finally` block, or the `async with` form. Only the five portable-format adapters (codex, claude_sdk, anthropic, gemini, google_adk) can consume the output — pydantic_ai and langgraph want framework-native formats, so swap those agents' frameworks first if you need MCP on them.
+**Tool restriction:** Room/peer-management tools are dropped per-agent via `AdapterFeatures(exclude_tools=...)`, built in `adapter_factory._build_features`. `band_lookup_peers` and `band_create_chatroom` are excluded for everyone; `band_add_participant` is excluded too unless the adapter is created with `can_invite=True` (lead negotiators, so they can pull in their own counsel by name). The LangGraph adapter honors `exclude_tools`; pydantic_ai/anthropic ignore it, so the prompt is the backstop there (see `scenarios/prompt_templates.py`).
 
 **Key config files:**
-- `.env` — `THENVOI_API_KEY_USER` (only required if you use `setup_agents.py` or `kickoff.py`; the manual UI-based flow documented in README.md doesn't need it)
-- `agent_config.<scenario>.yaml` — per-agent `agent_id` + `api_key`. Git-ignored. Either generated by `setup_agents.py` or hand-filled by copying `agent_config.<scenario>.yaml.example`.
-- `.agent_ids.<scenario>.txt` — per-scenario agent-id list used by `setup_agents.py --delete` (git-ignored; only created by the automated path)
+- `.env` (see `.env.example`):
+  - `BAND_API_KEY_USER` -- User API key used for agent registration and room management.
+  - `BAND_API_KEY_USER_STARTUP` / `BAND_API_KEY_USER_VC` -- optional per-team User API keys. When set, `setup_agents.py` registers each team's agents under its own account so team-strategy memories are isolated between teams. Both fall back to `BAND_API_KEY_USER` when unset (no isolation).
+  - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` -- model provider keys (per `agents.yaml`).
+  - `BAND_ENABLE_MEMORY` -- optional; set to `1` to use the platform Memory API (Enterprise plan only). When unset (default), the demo runs without memory: `setup_agents.py` skips team-strategy seeding, `adapter_factory.py` omits `Capability.MEMORY` (no memory tools), the prompts drop their memory instructions, and `kickoff.py` skips memory cleanup. The single switch is `memory_config.memory_enabled()`.
+- `agent_config.<scenario>.yaml` -- per-agent `agent_id` + `api_key` + `team_subject_id` (generated by `setup_agents.py`, git-ignored). `setup_agents.py`, `kickoff.py`, `load_credentials`, `agent_config_ext.inject_team_subject_id`, and `check_memories.py` all resolve this path through `adapter_factory.credentials_path(scenario)`.
 
 **Cleanup caveat:** The Thenvoi API has no delete-room endpoint. `kickoff.py` cleans up old rooms by default (removes participants); use `--no-clean` to skip. For owned rooms (where self-removal returns 403), it removes all other participants instead to deactivate them.
 
