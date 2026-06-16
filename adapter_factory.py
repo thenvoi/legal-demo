@@ -11,7 +11,8 @@ Each scenario directory contains an ``agents.yaml`` like::
       framework: langgraph
       model: claude-sonnet-4-6-20250514
 
-Supported frameworks: ``anthropic``, ``pydantic_ai``, ``langgraph``.
+Supported frameworks: ``anthropic``, ``pydantic_ai``, ``langgraph``, ``crewai``,
+``letta``, ``parlant`` (parlant must be wired up directly in the agent module).
 """
 
 from __future__ import annotations
@@ -21,8 +22,21 @@ from pathlib import Path
 
 import yaml
 
+from band import AdapterFeatures, Capability
+
 
 SCENARIOS_DIR = Path(__file__).parent / "scenarios"
+
+# Shared adapter features:
+# - capabilities: enable the memory tools (band_list_memories, band_store_memory, ...)
+#   that the negotiation prompts rely on for team strategy and deal-state tracking.
+# - exclude_tools: drop room/peer-management tools the agents must never use. This is
+#   honored by the LangGraph adapter; pydantic_ai/anthropic ignore it (the prompt is
+#   the backstop there — see scenarios/prompt_templates.py).
+_FEATURES = AdapterFeatures(
+    capabilities={Capability.MEMORY},
+    exclude_tools=("band_add_participant", "band_lookup_peers", "band_create_chatroom"),
+)
 
 
 def _model_provider(model: str) -> str:
@@ -46,26 +60,26 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
     provider = _model_provider(model)
 
     if framework == "anthropic":
-        from thenvoi.adapters import AnthropicAdapter
+        from band.adapters import AnthropicAdapter
 
         return AnthropicAdapter(
             model=model,
-            custom_section=custom_section,
-            enable_memory_tools=True,
+            prompt=custom_section,
+            features=_FEATURES,
         )
 
     if framework == "pydantic_ai":
-        from thenvoi.adapters import PydanticAIAdapter
+        from band.adapters import PydanticAIAdapter
 
         return PydanticAIAdapter(
             model=f"{provider}:{model}",
             custom_section=custom_section,
-            enable_memory_tools=True,
+            features=_FEATURES,
         )
 
     if framework == "langgraph":
         from langgraph.checkpoint.memory import InMemorySaver
-        from thenvoi.adapters import LangGraphAdapter
+        from band.adapters import LangGraphAdapter
 
         if provider == "anthropic":
             from langchain_anthropic import ChatAnthropic
@@ -78,21 +92,21 @@ def create_adapter(agent_key: str, custom_section: str, scenario: str):
             llm=llm,
             checkpointer=InMemorySaver(),
             custom_section=custom_section,
-            enable_memory_tools=True,
+            features=_FEATURES,
         )
 
     if framework == "crewai":
-        from thenvoi.adapters import CrewAIAdapter
+        from band.adapters import CrewAIAdapter
 
         return CrewAIAdapter(
             model=model,
             custom_section=custom_section,
-            enable_memory_tools=True,
+            features=_FEATURES,
         )
 
     if framework == "letta":
-        from thenvoi.adapters import LettaAdapter
-        from thenvoi.adapters.letta import LettaAdapterConfig
+        from band.adapters import LettaAdapter
+        from band.adapters.letta import LettaAdapterConfig
 
         letta_model = f"{provider}/{model}"
         config = LettaAdapterConfig(

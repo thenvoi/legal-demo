@@ -47,9 +47,9 @@ def _run_agent(mod_name: str) -> None:
 
     if os.environ.get("THENVOI_DEBUG") == "1":
         for name in (
-            "thenvoi.adapters.pydantic_ai",
-            "thenvoi.preprocessing",
-            "thenvoi.runtime.execution",
+            "band.adapters.pydantic_ai",
+            "band.preprocessing",
+            "band.runtime.execution",
             "httpx",
             "openai",
         ):

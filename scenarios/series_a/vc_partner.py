@@ -12,8 +12,8 @@ import os
 
 from dotenv import load_dotenv
 
-from thenvoi import Agent
-from thenvoi.config import load_agent_config
+from band import Agent
+from band.config import load_agent_config
 
 from adapter_factory import create_adapter
 from platform_url import get_platform_url, get_ws_url
@@ -57,8 +57,6 @@ CUSTOM_SECTION = build_lead_prompt(
 
 async def main() -> None:
     load_dotenv()
-    from tool_filter import remove_tools
-    remove_tools("thenvoi_add_participant", "thenvoi_lookup_peers", "thenvoi_create_chatroom")
 
     agent_id, api_key = load_agent_config("vc_partner")
 

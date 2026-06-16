@@ -12,8 +12,8 @@ import os
 
 from dotenv import load_dotenv
 
-from thenvoi import Agent
-from thenvoi.config import load_agent_config
+from band import Agent
+from band.config import load_agent_config
 
 from adapter_factory import create_adapter
 from platform_url import get_platform_url, get_ws_url
@@ -59,8 +59,6 @@ async def main() -> None:
     # Room topology is fixed by kickoff.py — prevent the LLM from inviting
     # agents into rooms or creating new ones (the SDK's base prompt otherwise
     # encourages this, overriding our custom instructions).
-    from tool_filter import remove_tools
-    remove_tools("thenvoi_add_participant", "thenvoi_lookup_peers", "thenvoi_create_chatroom")
 
     agent_id, api_key = load_agent_config("startup_ceo")
 

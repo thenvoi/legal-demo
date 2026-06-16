@@ -22,8 +22,8 @@ import dataclasses
 import logging
 import re
 
-from thenvoi.core.types import AgentInput
-from thenvoi.preprocessing.default import DefaultPreprocessor
+from band.core.types import AgentInput
+from band.preprocessing.default import DefaultPreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -117,12 +117,15 @@ class DebouncePreprocessor:
 
     async def process(self, ctx, event, agent_id: str) -> AgentInput | None:
         sender_id = getattr(getattr(event, "payload", None), "sender_id", None)
-        if sender_id and ctx.queue.qsize() > 0:
-            # Peek at queued events to see if a newer message from the same
-            # sender is waiting.  Uses the internal deque (same pattern the
-            # SDK itself uses in _drain_duplicate_from_queue).
-            # Verified against thenvoi-sdk 0.2.4.
-            for queued in ctx.queue._queue:  # noqa: SLF001
+        # band exposes no public queue-peek API, so we read the asyncio.Queue's
+        # internal deque (same pattern the SDK uses in _drain_duplicate_from_queue).
+        # Verified against band-sdk 1.0.0.  getattr-guarded so that if a future
+        # SDK release drops or renames _queue, debouncing degrades to a no-op
+        # instead of raising.
+        queued_events = getattr(ctx.queue, "_queue", None)
+        if sender_id and queued_events:
+            # Peek at queued events for a newer message from the same sender.
+            for queued in queued_events:  # noqa: SLF001
                 queued_sender = getattr(
                     getattr(queued, "payload", None), "sender_id", None
                 )
