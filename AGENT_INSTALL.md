@@ -160,7 +160,7 @@ Agents to create:
 | Startup CEO | `startup_ceo` |
 | Startup Lawyer | `startup_lawyer` |
 | VC Partner | `vc_partner` |
-| VC Legal Counsel | `vc_legal_counsel` |
+| VC Lawyer | `vc_counsel` |
 
 Ask for each `agent_id` and `api_key` via your input tool (one agent at a time is fine). Then write them to `agent_config.series_a.yaml`:
 
@@ -183,7 +183,7 @@ vc_partner:
   agent_id: "uuid-here"
   api_key: "key-here"
 
-vc_legal_counsel:
+vc_counsel:
   agent_id: "uuid-here"
   api_key: "key-here"
 ```

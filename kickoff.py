@@ -24,6 +24,7 @@ from thenvoi_rest import AsyncRestClient, ChatMessageRequest, ParticipantRequest
 from thenvoi_rest.human_api_chats import CreateMyChatRoomRequestChat
 from thenvoi_rest.types import ChatMessageRequestMentionsItem as Mention
 
+from adapter_factory import credentials_path
 from memory_config import memory_enabled
 from platform_url import get_platform_url
 

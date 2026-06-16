@@ -49,7 +49,7 @@ def load_credentials(agent_key: str, scenario: str) -> tuple[str, str]:
     Each scenario has its own ``agent_config.<scenario>.yaml`` so scenarios
     can be registered, run, and torn down independently of each other.
     """
-    from thenvoi.config import load_agent_config
+    from band.config import load_agent_config
 
     return load_agent_config(agent_key, config_path=credentials_path(scenario))
 
@@ -92,6 +92,7 @@ def create_adapter(
     custom_section: str,
     scenario: str,
     *,
+    can_invite: bool = False,
     additional_tools: list | None = None,
 ):
     """Return an adapter instance configured via ``scenarios/<scenario>/agents.yaml``.

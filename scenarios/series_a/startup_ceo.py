@@ -12,12 +12,7 @@ import os
 
 from dotenv import load_dotenv
 
-<<<<<<< HEAD
 from band import Agent
-from band.config import load_agent_config
-=======
-from thenvoi import Agent
->>>>>>> main
 
 from adapter_factory import create_adapter, load_credentials
 from platform_url import get_platform_url, get_ws_url
@@ -65,19 +60,13 @@ async def main() -> None:
     # agents into rooms or creating new ones (the SDK's base prompt otherwise
     # encourages this, overriding our custom instructions).
 
-<<<<<<< HEAD
-    agent_id, api_key = load_agent_config("startup_ceo")
+    scenario = os.path.basename(os.path.dirname(__file__))
+    agent_id, api_key = load_credentials("startup_ceo", scenario)
 
     from agent_config_ext import inject_team_subject_id
     custom_section = inject_team_subject_id("startup_ceo", CUSTOM_SECTION)
 
-    scenario = os.path.basename(os.path.dirname(__file__))
     adapter = create_adapter("startup_ceo", custom_section, scenario, can_invite=True)
-=======
-    scenario = os.path.basename(os.path.dirname(__file__))
-    agent_id, api_key = load_credentials("startup_ceo", scenario)
-    adapter = create_adapter("startup_ceo", CUSTOM_SECTION, scenario)
->>>>>>> main
 
     agent = Agent.create(
         adapter=adapter,

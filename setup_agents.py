@@ -28,6 +28,7 @@ import sys
 import yaml
 from dotenv import load_dotenv
 
+from adapter_factory import agent_ids_path, credentials_path
 from memory_config import memory_enabled
 from platform_url import get_platform_url
 
@@ -68,11 +69,15 @@ def _all_api_keys() -> set[str]:
     return keys
 
 
-async def create_agents(agents: list[dict], team_memories: dict | None = None) -> None:
+async def create_agents(
+    scenario: str, agents: list[dict], team_memories: dict | None = None
+) -> None:
     from thenvoi_rest import AsyncRestClient
     from thenvoi_rest.types import AgentRegisterRequest
 
     platform_url = get_platform_url()
+    config_file = credentials_path(scenario)
+    ids_file = agent_ids_path(scenario)
     config = {}
     agent_ids = []
 
@@ -116,7 +121,7 @@ async def create_agents(agents: list[dict], team_memories: dict | None = None) -
         if team and team in teams_seen:
             config[agent_def["config_key"]]["team_subject_id"] = teams_seen[team]["lead_agent_id"]
 
-    with open(CONFIG_FILE, "w") as f:
+    with open(config_file, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
     logger.info("Credentials written to %s", config_file.name)
 
@@ -163,7 +168,7 @@ async def _seed_team_memories(
         logger.info("  Seeded %d memories for team '%s'", len(memories), team)
 
 
-async def delete_agents(agent_names: set[str] | None = None) -> None:
+async def delete_agents(scenario: str, agent_names: set[str] | None = None) -> None:
     """Delete agents by name. If agent_names is None, delete ALL agents."""
     from thenvoi_rest import AsyncRestClient
 
@@ -192,9 +197,9 @@ async def delete_agents(agent_names: set[str] | None = None) -> None:
                     logger.warning("Could not delete %s: %s", agent.id, e)
 
     # Always clean up local files
-    for path in [AGENT_IDS_FILE, CONFIG_FILE]:
-        if os.path.exists(path):
-            os.remove(path)
+    for path in [agent_ids_path(scenario), credentials_path(scenario)]:
+        if path.exists():
+            path.unlink()
     logger.info("Cleanup complete.")
 
 
@@ -210,7 +215,7 @@ async def main() -> None:
     if "--delete" in sys.argv:
         scenario_mod = importlib.import_module(f"scenarios.{scenario}.scenario")
         names = {a["name"] for a in scenario_mod.AGENTS}
-        await delete_agents(agent_names=names)
+        await delete_agents(scenario, agent_names=names)
         return
 
     # Load scenario to know which agent names to clean up
@@ -219,14 +224,14 @@ async def main() -> None:
 
     # Clean up only THIS scenario's agents before creating new ones
     logger.info("Cleaning up existing agents for scenario: %s", scenario)
-    await delete_agents(agent_names=agent_names)
+    await delete_agents(scenario, agent_names=agent_names)
 
     logger.info("Setting up agents for scenario: %s", scenario)
     # Memory seeding uses the Enterprise-only Memory API; skip it unless enabled.
     team_memories = getattr(scenario_mod, "TEAM_MEMORIES", None) if memory_enabled() else None
     if team_memories is None:
         logger.info("Memory disabled (set BAND_ENABLE_MEMORY=1 to seed team strategy).")
-    await create_agents(scenario_mod.AGENTS, team_memories)
+    await create_agents(scenario, scenario_mod.AGENTS, team_memories)
 
 
 if __name__ == "__main__":

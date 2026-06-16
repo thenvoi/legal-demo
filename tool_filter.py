@@ -33,7 +33,7 @@ def remove_tools(*tool_names: str) -> None:
 
     # Always prune the runtime catalog. This is what filters codex and every
     # other adapter that reads via AgentToolsProtocol.get_tool_schemas.
-    from thenvoi.runtime.tools import TOOL_DEFINITIONS
+    from band.runtime.tools import TOOL_DEFINITIONS
 
     for name in tool_names:
         TOOL_DEFINITIONS.pop(name, None)
@@ -52,8 +52,8 @@ def _patch_once() -> None:
 def _patch_langgraph() -> None:
     """LangGraph builds wrappers manually — filter the output list."""
     try:
-        import thenvoi.integrations.langgraph.langchain_tools as _lg_mod
-        import thenvoi.adapters.langgraph as _lg_adapter_mod
+        import band.integrations.langgraph.langchain_tools as _lg_mod
+        import band.adapters.langgraph as _lg_adapter_mod
     except ImportError:
         logger.debug("langgraph not installed; skipping tool-filter patch")
         return
@@ -72,7 +72,7 @@ def _patch_langgraph() -> None:
 def _patch_crewai() -> None:
     """CrewAI has its own tool builder and crashes on empty LLM responses."""
     try:
-        from thenvoi.adapters.crewai import CrewAIAdapter
+        from band.adapters.crewai import CrewAIAdapter
     except ImportError:
         logger.debug("crewai not installed; skipping tool-filter patch")
         return

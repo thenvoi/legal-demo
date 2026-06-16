@@ -40,12 +40,6 @@ vc_partner:
   framework: langgraph
   model: claude-sonnet-4-6
 
-<<<<<<< HEAD
 vc_counsel:
   framework: pydantic_ai
   model: claude-sonnet-4-6
-=======
-vc_legal_counsel:
-  framework: langgraph
-  model: gpt-5.4
->>>>>>> main

@@ -14,12 +14,7 @@ import os
 
 from dotenv import load_dotenv
 
-<<<<<<< HEAD
 from band import Agent
-from band.config import load_agent_config
-=======
-from thenvoi import Agent
->>>>>>> main
 
 from adapter_factory import create_adapter, load_credentials
 from platform_url import get_platform_url, get_ws_url
@@ -67,19 +62,13 @@ CUSTOM_SECTION = build_lead_prompt(
 async def main() -> None:
     load_dotenv()
 
-<<<<<<< HEAD
-    agent_id, api_key = load_agent_config("tv_contract_attorney")
+    scenario = os.path.basename(os.path.dirname(__file__))
+    agent_id, api_key = load_credentials("tv_contract_attorney", scenario)
 
     from agent_config_ext import inject_team_subject_id
     custom_section = inject_team_subject_id("tv_contract_attorney", CUSTOM_SECTION)
 
-    scenario = os.path.basename(os.path.dirname(__file__))
     adapter = create_adapter("tv_contract_attorney", custom_section, scenario, can_invite=True)
-=======
-    scenario = os.path.basename(os.path.dirname(__file__))
-    agent_id, api_key = load_credentials("tv_contract_attorney", scenario)
-    adapter = create_adapter("tv_contract_attorney", CUSTOM_SECTION, scenario)
->>>>>>> main
 
     agent = Agent.create(
         adapter=adapter,
